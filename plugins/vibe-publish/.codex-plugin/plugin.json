@@ -1,0 +1,23 @@
+{
+  "name": "vibe-publish",
+  "version": "0.5.3",
+  "description": "Private Alpha carrier for structured, user-confirmed bilingual Vibe Forum publishing and author edits.",
+  "author": {
+    "name": "Vibe Coding Forum"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Vibe Publish",
+    "shortDescription": "Create or author-edit bilingual forum posts safely.",
+    "longDescription": "Packages the Vibe Publish Skill and deterministic local Ruby CLI for bilingual private Alpha publishing and conflict-safe author edits.",
+    "developerName": "Vibe Coding Forum",
+    "category": "Productivity",
+    "capabilities": [
+      "Local bilingual preview",
+      "One user-confirmed PNG or JPEG upload",
+      "User-confirmed publishing",
+      "Version-checked author edits"
+    ],
+    "defaultPrompt": "Use $vibe-publish:vibe-publish to prepare or author-edit one bilingual Vibe Forum post and stop for confirmation."
+  }
+}

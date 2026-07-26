@@ -1,0 +1,195 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+require_relative "../lib/vibe_forum_local"
+
+if %w[--version -V].include?(ARGV.first)
+  puts "vibe-forum #{VibeForumLocal::VERSION}"
+  exit
+end
+
+options = {
+  credentials: VibeForumLocal::DEFAULT_CREDENTIALS,
+  revoke: false,
+  online: false,
+  allow_loopback_http: false,
+  credential_backend: nil,
+}
+help_requested = %w[-h --help].include?(ARGV.first)
+command = ARGV.shift
+
+parser =
+  OptionParser.new do |opts|
+    opts.banner = "Usage: vibe-forum <auth|doctor|site-info|edit-info|logout|image-info|image-upload|review-request|publish|version> [options]"
+    opts.on("--site URL", "Forum base URL") { |value| options[:site] = value }
+    opts.on("--credentials PATH", "Credential file") { |value| options[:credentials] = value }
+    opts.on(
+      "--credential-backend BACKEND",
+      "Credential storage for auth: auto or file; keychain is unsupported in this alpha",
+    ) { |value| options[:credential_backend] = value == "auto" ? nil : value }
+    opts.on("--manifest PATH", "vibe-publish/v3 bilingual publication JSON") do |value|
+      options[:manifest] = value
+    end
+    opts.on("--review PATH", "Local AI review report JSON") { |value| options[:review] = value }
+    opts.on("--review-json JSON", "Inline local AI review report") do |value|
+      options[:review_json] = value
+    end
+    opts.on("--request-id ID", "Explicit retry/idempotency identifier") do |value|
+      options[:request_id] = value
+    end
+    opts.on("--post-id ID", Integer, "Author-owned post to inspect before editing") do |value|
+      options[:post_id] = value
+    end
+    opts.on("--file PATH", "One local PNG or JPEG image") { |value| options[:file] = value }
+    opts.on("--expected-sha256 SHA256", "SHA-256 confirmed from image-info") do |value|
+      options[:expected_sha256] = value
+    end
+    opts.on("--revoke", "Revoke the current publishing key before removing it locally") do
+      options[:revoke] = true
+    end
+    opts.on("--online", "Make doctor verify the site and current publishing key") do
+      options[:online] = true
+    end
+    opts.on(
+      "--allow-loopback-http",
+      "Explicitly allow localhost HTTP for development; never use for a remote forum",
+    ) do
+      options[:allow_loopback_http] = true
+    end
+    opts.on("-h", "--help", "Show this help") do
+      puts opts
+      exit
+    end
+  end
+
+if help_requested
+  puts parser
+  exit
+end
+
+def publication_payload(options)
+  raise VibeForumLocal::Error, "--manifest is required" if options[:manifest].to_s.empty?
+
+  payload = JSON.parse(File.read(options[:manifest], encoding: "UTF-8"))
+  VibeForumLocal::Envelope.validate!(payload)
+end
+
+begin
+  parser.parse!(ARGV)
+
+  case command
+  when "version"
+    puts "vibe-forum #{VibeForumLocal::VERSION}"
+  when "auth"
+    raise VibeForumLocal::Error, "--site is required" if options[:site].to_s.empty?
+
+    VibeForumLocal::DeviceAuthorization.new(
+      site: options[:site],
+      credentials_path: options[:credentials],
+      credential_backend: options[:credential_backend],
+      allow_loopback_http: options[:allow_loopback_http],
+    ).run
+  when "doctor"
+    report =
+      VibeForumLocal::Doctor.new(
+        credentials_path: options[:credentials],
+        allow_loopback_http: options[:allow_loopback_http],
+      ).run(
+        site: options[:site],
+        online: options[:online],
+      )
+    puts JSON.pretty_generate(report)
+    exit(report.fetch("ok") ? 0 : 1)
+  when "site-info"
+    credentials =
+      VibeForumLocal::Credentials.load(
+        options[:credentials],
+        allow_loopback_http: options[:allow_loopback_http],
+      )
+    puts JSON.pretty_generate(
+           VibeForumLocal::SiteInfo.new(
+             credentials: credentials,
+             allow_loopback_http: options[:allow_loopback_http],
+           ).fetch,
+         )
+  when "edit-info"
+    raise VibeForumLocal::Error, "--post-id is required" if options[:post_id].to_i <= 0
+
+    credentials =
+      VibeForumLocal::Credentials.load(
+        options[:credentials],
+        allow_loopback_http: options[:allow_loopback_http],
+      )
+    puts JSON.pretty_generate(
+           VibeForumLocal::EditInfo.new(
+             credentials: credentials,
+             allow_loopback_http: options[:allow_loopback_http],
+           ).fetch(
+             post_id: options[:post_id],
+           ),
+         )
+  when "logout"
+    raise VibeForumLocal::Error, "logout requires --revoke; local-only deletion is not supported" unless options[:revoke]
+
+    response =
+      VibeForumLocal::CredentialRevoker.new(
+        credentials_path: options[:credentials],
+        allow_loopback_http: options[:allow_loopback_http],
+      ).revoke!
+    puts JSON.pretty_generate(response)
+  when "image-info"
+    raise VibeForumLocal::Error, "--file is required" if options[:file].to_s.empty?
+
+    puts JSON.pretty_generate(VibeForumLocal::Image.inspect_file(options[:file]))
+  when "image-upload"
+    raise VibeForumLocal::Error, "--file is required" if options[:file].to_s.empty?
+    if options[:expected_sha256].to_s.empty?
+      raise VibeForumLocal::Error, "--expected-sha256 from image-info is required"
+    end
+
+    credentials =
+      VibeForumLocal::Credentials.load(
+        options[:credentials],
+        allow_loopback_http: options[:allow_loopback_http],
+      )
+    response =
+      VibeForumLocal::ImageUploader.new(
+        credentials: credentials,
+        allow_loopback_http: options[:allow_loopback_http],
+      ).upload(
+        file_path: options[:file],
+        expected_sha256: options[:expected_sha256],
+      )
+    puts JSON.pretty_generate(response)
+  when "review-request"
+    puts JSON.pretty_generate(VibeForumLocal::Review.request(publication_payload(options)))
+  when "publish"
+    payload = publication_payload(options)
+    report_json = options[:review_json] || (File.read(options[:review]) if options[:review])
+    raise VibeForumLocal::Error, "--review or --review-json is required" if report_json.to_s.empty?
+
+    report = JSON.parse(report_json)
+    credentials =
+      VibeForumLocal::Credentials.load(
+        options[:credentials],
+        allow_loopback_http: options[:allow_loopback_http],
+      )
+    response =
+      VibeForumLocal::Publisher.new(
+        credentials: credentials,
+        allow_loopback_http: options[:allow_loopback_http],
+      ).publish(
+        payload: payload,
+        review_report: report,
+        request_id: options[:request_id],
+      )
+    puts JSON.pretty_generate(response)
+  else
+    warn parser
+    exit 2
+  end
+rescue VibeForumLocal::Error, JSON::ParserError, Errno::ENOENT => e
+  warn "Error: #{e.message}"
+  exit 1
+end

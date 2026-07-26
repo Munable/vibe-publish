@@ -1,0 +1,90 @@
+{
+  "schema": "vibe-codex-plugin-release/v1",
+  "forum_url": "https://discourse-production-1690.up.railway.app",
+  "source_url": "https://github.com/Munable/vibe-publish",
+  "onboarding": {
+    "path": "README.md",
+    "sha256": "0e4c06aba49108c3385fe9c120a4be9a7178d4edef198107e5efe4b8b81b5e75"
+  },
+  "marketplace": {
+    "name": "vibe-private",
+    "path": ".agents/plugins/marketplace.json",
+    "sha256": "03925c01bd25478759cec5e081a94c557f50a7a3025cd06b61abd8cfe1616ec3"
+  },
+  "plugin": {
+    "id": "vibe-publish@vibe-private",
+    "name": "vibe-publish",
+    "version": "0.5.3",
+    "source_path": "plugins/vibe-publish",
+    "manifest_sha256": "57519036d7c1636725d93e5a4aa5892486827dedbc869d8de1e06d75716c4c79",
+    "tree_sha256": "08b99f6762844407358925a6b6ea39cb798d95ec7a59b7ab2cd60cff4277fccd",
+    "files": [
+      {
+        "path": ".codex-plugin/plugin.json",
+        "bytes": 940,
+        "mode": "644",
+        "sha256": "57519036d7c1636725d93e5a4aa5892486827dedbc869d8de1e06d75716c4c79"
+      },
+      {
+        "path": "CONTRIBUTING.md",
+        "bytes": 2704,
+        "mode": "644",
+        "sha256": "7e5acb8605eaf889eaad0cc8e97f16ff4c0712ff38b0a96b49b012712b2417a0"
+      },
+      {
+        "path": "README.md",
+        "bytes": 5597,
+        "mode": "644",
+        "sha256": "c10f9d3d6dbfa671660725d86e7513eba58f1a0665620414a7cdc55f7eabdd32"
+      },
+      {
+        "path": "skills/vibe-publish/SKILL.md",
+        "bytes": 17009,
+        "mode": "644",
+        "sha256": "7b2e56bbdb90df8d945bea33b472376ff642d929e9f9c0a123a1cd0ecc04a187"
+      },
+      {
+        "path": "skills/vibe-publish/agents/openai.yaml",
+        "bytes": 328,
+        "mode": "644",
+        "sha256": "0128db429815c0ea4fa2b2169fa5aefd4c80cffbff6d81bb5f030a4bdf56a262"
+      },
+      {
+        "path": "skills/vibe-publish/references/editorial-method.md",
+        "bytes": 4503,
+        "mode": "644",
+        "sha256": "db541c172fde6947d4134242bafd63a749f91c5b22472d645f97e44b11524fc4"
+      },
+      {
+        "path": "skills/vibe-publish/references/publish-contract.md",
+        "bytes": 9565,
+        "mode": "644",
+        "sha256": "94a886da4432e5e932e723d04e5caf2d4ccae05249d2831ccfdb9b307943ad95"
+      },
+      {
+        "path": "skills/vibe-publish/references/review-policy.md",
+        "bytes": 5648,
+        "mode": "644",
+        "sha256": "ace4a72d57295c8e549615a90cd012a1bd856adc052ab2fe970c85cc5237c851"
+      },
+      {
+        "path": "tool/VERSION",
+        "bytes": 6,
+        "mode": "644",
+        "sha256": "27ecff1fcdaf65ab46c1bb99c1072d6d134a0e8dd97dd95cfa88696b9ed453b2"
+      },
+      {
+        "path": "tool/bin/vibe-forum",
+        "bytes": 6656,
+        "mode": "755",
+        "sha256": "d394067c6e7db4688fe3fb28288156c8c200a9ee5507c6cca4dcc7a0406d5c85"
+      },
+      {
+        "path": "tool/lib/vibe_forum_local.rb",
+        "bytes": 61400,
+        "mode": "644",
+        "sha256": "62bd8f34a3c3bd66a711f5fa1fec261818a8e78d2493ff6180c25971fc26ee48"
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Vibe Publish / 双语发布"
+  short_description: "Create or author-edit bilingual forum posts safely"
+  default_prompt: "Create one verified, single-axis English-Chinese forum draft, show the exact preview, and stop for every required human confirmation."
+
+policy:
+  allow_implicit_invocation: true

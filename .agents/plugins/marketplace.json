@@ -1,0 +1,20 @@
+{
+  "name": "vibe-private",
+  "interface": {
+    "displayName": "Vibe Forum Private Alpha"
+  },
+  "plugins": [
+    {
+      "name": "vibe-publish",
+      "source": {
+        "source": "local",
+        "path": "./plugins/vibe-publish"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
