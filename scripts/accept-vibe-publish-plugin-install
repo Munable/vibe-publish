@@ -1,0 +1,300 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "digest"
+require "fileutils"
+require "json"
+require "open3"
+require "optparse"
+require "tmpdir"
+require "timeout"
+require "uri"
+
+ROOT = File.expand_path("..", __dir__)
+BUILDER = File.join(ROOT, "scripts", "build-vibe-publish-marketplace")
+PLUGIN_ID = "vibe-publish@committown"
+DEFAULT_SOURCE_URL = "https://github.com/Munable/vibe-publish"
+
+options = { codex: ENV.fetch("CODEX", "codex") }
+OptionParser.new do |parser|
+  parser.banner = "Usage: scripts/accept-vibe-publish-plugin-install [--marketplace-root DIR | --forum-url URL] [--source-url HTTPS_GIT_URL] [--report FILE]"
+  parser.on("--marketplace-root DIR", "Prebuilt controlled marketplace root") { |v| options[:marketplace_root] = v }
+  parser.on("--forum-url URL", "Exact forum URL when building a temporary marketplace") { |v| options[:forum_url] = v }
+  parser.on("--source-url HTTPS_GIT_URL", "Expected public marketplace source URL") { |v| options[:source_url] = v }
+  parser.on("--codex PATH", "Codex CLI (default: codex on PATH)") { |v| options[:codex] = v }
+  parser.on("--report FILE", "Write the sanitized JSON result") { |v| options[:report] = v }
+end.parse!
+
+def run!(env, *command, chdir:)
+  stdout, stderr, status = Open3.capture3(env, *command, chdir: chdir)
+  raise "Command failed (#{status.exitstatus}): #{command.join(' ')}\n#{stderr}" unless status.success?
+
+  stdout
+end
+
+def parse_json!(text, label)
+  JSON.parse(text)
+rescue JSON::ParserError => e
+  raise "#{label} did not return JSON: #{e.message}"
+end
+
+def digest_or_missing(path)
+  File.file?(path) ? Digest::SHA256.file(path).hexdigest : "missing"
+end
+
+def verify_inventory!(root, files, expected_tree, label)
+  input = files.map { |file| [file["sha256"], file["mode"], file["bytes"], file["path"]].join(" ") }.join("\n") + "\n"
+  raise "#{label} tree SHA-256 does not match release manifest" unless Digest::SHA256.hexdigest(input) == expected_tree
+
+  files.each do |file|
+    path = File.join(root, file.fetch("path"))
+    raise "#{label} file is missing: #{file.fetch('path')}" unless File.file?(path)
+    raise "#{label} SHA-256 mismatch for #{file.fetch('path')}" unless Digest::SHA256.file(path).hexdigest == file.fetch("sha256")
+    raise "#{label} byte size mismatch for #{file.fetch('path')}" unless File.size(path) == file.fetch("bytes")
+    actual_mode = format("%03o", File.stat(path).mode & 0o777)
+    raise "#{label} mode mismatch for #{file.fetch('path')}" unless actual_mode == file.fetch("mode")
+  end
+end
+
+def valid_public_source_url?(value)
+  uri = URI.parse(value)
+  return false unless uri.scheme == "https" && !uri.hostname.to_s.empty? && !uri.userinfo && !uri.query && !uri.fragment
+
+  hostname = uri.hostname.downcase
+  return false if %w[localhost 127.0.0.1 ::1 example.com example.net example.org].include?(hostname)
+  return false if hostname.end_with?(".example", ".invalid", ".test")
+
+  uri.path.split("/").reject(&:empty?).length >= 2
+rescue URI::InvalidURIError
+  false
+end
+
+def app_server_skills!(env, codex, cwd)
+  command = [codex, "app-server", "--listen", "stdio://"]
+  Open3.popen3(env, *command, chdir: cwd) do |stdin, stdout, stderr, wait|
+    stderr_reader = Thread.new { stderr.read }
+    stdin.sync = true
+    stdin.puts(JSON.generate("id" => 1, "method" => "initialize", "params" => { "clientInfo" => { "name" => "vibe-plugin-acceptance", "version" => "1.0.0" } }))
+
+    Timeout.timeout(30) do
+      loop do
+        message = JSON.parse(stdout.gets || raise("app-server ended before initialize"))
+        next unless message["id"] == 1
+
+        stdin.puts(JSON.generate("id" => 2, "method" => "skills/list", "params" => { "cwds" => [cwd], "forceReload" => true }))
+        break
+      end
+
+      loop do
+        message = JSON.parse(stdout.gets || raise("app-server ended before skills/list"))
+        return message.fetch("result") if message["id"] == 2
+      end
+    end
+  ensure
+    stdin&.close unless stdin&.closed?
+    Process.kill("TERM", wait.pid) if wait&.alive?
+    wait&.value
+    error_output = stderr_reader&.value.to_s
+    warn error_output unless error_output.empty?
+  end
+end
+
+original_home = File.expand_path("~")
+real_config = File.join(original_home, ".codex", "config.toml")
+real_config_before = digest_or_missing(real_config)
+
+Dir.mktmpdir("vibe-plugin-install-acceptance-") do |sandbox|
+  isolated_home = File.join(sandbox, "home")
+  codex_home = File.join(sandbox, "codex-home")
+  fresh_workspace = File.join(sandbox, "fresh-workspace")
+  xdg_home = File.join(sandbox, "xdg")
+  [isolated_home, codex_home, fresh_workspace, xdg_home].each { |path| FileUtils.mkdir_p(path) }
+
+  marketplace_root = options[:marketplace_root]&.then { |path| File.expand_path(path) }
+  unless marketplace_root
+    abort "--forum-url is required when --marketplace-root is omitted" if options[:forum_url].to_s.empty?
+    marketplace_root = File.join(sandbox, "committown-marketplace")
+    run!(
+      {},
+      BUILDER,
+      "--output",
+      marketplace_root,
+      "--forum-url",
+      options.fetch(:forum_url),
+      "--source-url",
+      options.fetch(:source_url, DEFAULT_SOURCE_URL),
+      chdir: ROOT,
+    )
+  end
+
+  release_path = File.join(marketplace_root, "vibe-publish-release.json")
+  release = parse_json!(File.read(release_path, encoding: "UTF-8"), "release manifest")
+  raise "Release manifest must use vibe-codex-plugin-release/v2" unless release["schema"] == "vibe-codex-plugin-release/v2"
+  forum_url = release.fetch("forum_url")
+  source_url = release.fetch("source_url")
+  raise "Release manifest source URL is not a real public HTTPS Git URL" unless valid_public_source_url?(source_url)
+  raise "Nested source URL does not match release source_url" unless release.dig("source", "url") == source_url
+  unless release.dig("source", "remote_repository_fetched") == false && release.dig("source", "remote_ref_verified") == false
+    raise "Local acceptance must not claim remote repository or ref verification"
+  end
+  if options[:source_url] && options[:source_url].sub(%r{/+\z}, "") != source_url
+    raise "Prebuilt marketplace source URL does not match --source-url"
+  end
+  if options[:forum_url] && options[:forum_url].sub(%r{/+\z}, "") != forum_url
+    raise "Prebuilt marketplace forum URL does not match --forum-url"
+  end
+  onboarding_path = File.join(marketplace_root, release.dig("onboarding", "path"))
+  raise "Onboarding README SHA-256 does not match release manifest" unless Digest::SHA256.file(onboarding_path).hexdigest == release.dig("onboarding", "sha256")
+  license_path = File.join(marketplace_root, release.dig("license", "path"))
+  raise "Release must declare Apache-2.0" unless release.dig("license", "spdx_id") == "Apache-2.0"
+  raise "Apache-2.0 LICENSE SHA-256 does not match release manifest" unless Digest::SHA256.file(license_path).hexdigest == release.dig("license", "sha256")
+  contributing_path = File.join(marketplace_root, release.dig("contributing", "path"))
+  raise "CONTRIBUTING SHA-256 does not match release manifest" unless Digest::SHA256.file(contributing_path).hexdigest == release.dig("contributing", "sha256")
+  security_path = File.join(marketplace_root, release.dig("security", "path"))
+  raise "SECURITY SHA-256 does not match release manifest" unless Digest::SHA256.file(security_path).hexdigest == release.dig("security", "sha256")
+  contributing = File.read(contributing_path, encoding: "UTF-8")
+  raise "CONTRIBUTING must require DCO sign-off" unless contributing.include?("Developer Certificate of Origin 1.1") && contributing.include?("git commit -s")
+  security = File.read(security_path, encoding: "UTF-8")
+  unless security.include?("Report a vulnerability") && security.include?("private GitHub Security Advisory")
+    raise "SECURITY must define a non-public vulnerability reporting path"
+  end
+  version = release.dig("plugin", "version")
+  marketplace_file = File.join(marketplace_root, release.dig("marketplace", "path"))
+  raise "Marketplace SHA-256 does not match release manifest" unless Digest::SHA256.file(marketplace_file).hexdigest == release.dig("marketplace", "sha256")
+  verify_inventory!(
+    File.join(marketplace_root, release.dig("plugin", "source_path")),
+    release.dig("plugin", "files"),
+    release.dig("plugin", "tree_sha256"),
+    "Plugin",
+  )
+  verify_inventory!(
+    marketplace_root,
+    release.dig("source_snapshot", "files"),
+    release.dig("source_snapshot", "tree_sha256"),
+    "Source snapshot",
+  )
+
+  env = ENV.to_h.merge(
+    "HOME" => isolated_home,
+    "CODEX_HOME" => codex_home,
+    "XDG_CONFIG_HOME" => xdg_home,
+    "TMPDIR" => File.join(sandbox, "tmp"),
+  )
+  FileUtils.mkdir_p(env.fetch("TMPDIR"))
+
+  codex_version = run!(env, options.fetch(:codex), "--version", chdir: fresh_workspace).strip
+  added = parse_json!(run!(env, options.fetch(:codex), "plugin", "marketplace", "add", marketplace_root, "--json", chdir: fresh_workspace), "marketplace add")
+  raise "Wrong marketplace was added" unless added["marketplaceName"] == "committown"
+  raise "Codex added a different marketplace root" unless File.realpath(added.fetch("installedRoot")) == File.realpath(marketplace_root)
+
+  before = parse_json!(run!(env, options.fetch(:codex), "plugin", "list", "--marketplace", "committown", "--available", "--json", chdir: fresh_workspace), "plugin list before install")
+  candidate = before.fetch("available").find { |item| item["pluginId"] == PLUGIN_ID }
+  raise "Plugin was not available from the controlled marketplace" unless candidate && candidate["version"] == version
+
+  installed = parse_json!(run!(env, options.fetch(:codex), "plugin", "add", PLUGIN_ID, "--json", chdir: fresh_workspace), "plugin add")
+  installed_root = File.realpath(installed.fetch("installedPath"))
+  cache_root = File.realpath(File.join(codex_home, "plugins", "cache"))
+  raise "Plugin escaped isolated CODEX_HOME" unless installed_root.start_with?("#{cache_root}/")
+  raise "Wrong installed version" unless installed["version"] == version
+
+  expected_files = release.dig("plugin", "files")
+  actual_paths = Dir.glob(File.join(installed_root, "**", "*"), File::FNM_DOTMATCH).select { |path| File.file?(path) }.map { |path| path.delete_prefix("#{installed_root}/") }.sort
+  raise "Installed file inventory differs from the signed package" unless actual_paths == expected_files.map { |file| file.fetch("path") }.sort
+  expected_files.each do |file|
+    path = File.join(installed_root, file.fetch("path"))
+    raise "SHA-256 mismatch for #{file.fetch('path')}" unless Digest::SHA256.file(path).hexdigest == file.fetch("sha256")
+  end
+
+  skills_result = app_server_skills!(env, options.fetch(:codex), fresh_workspace)
+  entry = skills_result.fetch("data").find { |item| item["cwd"] == fresh_workspace }
+  raise "Fresh task skill scan returned errors: #{entry&.fetch('errors')}" unless entry && entry.fetch("errors").empty?
+  namespaced_skill = entry.fetch("skills").find { |skill| skill["name"] == "vibe-publish:vibe-publish" }
+  raise "Namespaced installed Skill was not discovered" unless namespaced_skill && namespaced_skill["enabled"]
+  raise "Fresh task unexpectedly resolved the repo-local Skill" if entry.fetch("skills").any? { |skill| skill["name"] == "vibe-publish" }
+
+  skill_path = File.realpath(namespaced_skill.fetch("path"))
+  raise "Namespaced Skill did not come from the installed cache" unless skill_path.start_with?("#{installed_root}/")
+  publisher = File.realpath(File.expand_path("../../tool/bin/vibe-forum", File.dirname(skill_path)))
+  raise "Packaged publisher is not executable" unless File.executable?(publisher)
+
+  publisher_version = run!(env, publisher, "--version", chdir: fresh_workspace).strip
+  raise "Packaged CLI version mismatch" unless publisher_version == "vibe-forum #{version}"
+
+  doctor_stdout, doctor_stderr, doctor_status = Open3.capture3(env, publisher, "doctor", "--site", "http://127.0.0.1:3000", chdir: fresh_workspace)
+  raise "Offline doctor unexpectedly succeeded without credentials" if doctor_status.success?
+  raise "Offline doctor wrote to stderr: #{doctor_stderr}" unless doctor_stderr.empty?
+  doctor = parse_json!(doctor_stdout, "offline doctor")
+  raise "Offline doctor made a network request" unless doctor["network_requests_made"] == false
+  raise "Offline doctor did not report missing credentials" unless doctor.dig("credentials", "state") == "missing"
+
+  keychain_stdout, keychain_stderr, keychain_status =
+    Open3.capture3(
+      env,
+      publisher,
+      "auth",
+      "--site",
+      forum_url,
+      "--credential-backend",
+      "keychain",
+      *(forum_url.start_with?("http://127.0.0.1", "http://localhost", "http://[::1]") ? ["--allow-loopback-http"] : []),
+      chdir: fresh_workspace,
+    )
+  raise "Explicit Keychain unexpectedly started authorization" if keychain_status.success?
+  raise "Explicit Keychain wrote to stdout before failing" unless keychain_stdout.empty?
+  unless keychain_stderr.include?("Keychain credential storage is not supported in Vibe Publish 0.6")
+    raise "Explicit Keychain did not return the fail-fast 0.6 error"
+  end
+  raise "Rejected Keychain authorization created credentials" if File.exist?(File.join(isolated_home, ".config", "vibe-forum", "credentials.json"))
+  raise "Rejected Keychain authorization created a client ID" if File.exist?(File.join(isolated_home, ".config", "vibe-forum", "client-id"))
+
+  migration_credential = File.join(isolated_home, ".config", "vibe-forum", "credentials.json")
+  FileUtils.mkdir_p(File.dirname(migration_credential))
+  File.write(migration_credential, "isolated-migration-sentinel-not-a-real-key\n")
+  File.chmod(0o600, migration_credential)
+  migration_credential_before = Digest::SHA256.file(migration_credential).hexdigest
+  run!(env, options.fetch(:codex), "plugin", "remove", PLUGIN_ID, "--json", chdir: fresh_workspace)
+  raise "Plugin removal deleted or changed the separate forum credential" unless
+    Digest::SHA256.file(migration_credential).hexdigest == migration_credential_before
+  reinstalled = parse_json!(run!(env, options.fetch(:codex), "plugin", "add", PLUGIN_ID, "--json", chdir: fresh_workspace), "plugin reinstall")
+  raise "Plugin reinstall selected the wrong version" unless reinstalled["version"] == version
+  raise "Plugin reinstall deleted or changed the separate forum credential" unless
+    Digest::SHA256.file(migration_credential).hexdigest == migration_credential_before
+
+  raise "Real ~/.codex config changed" unless digest_or_missing(real_config) == real_config_before
+
+  report = {
+    "schema" => "vibe-plugin-install-acceptance/v2",
+    "ok" => true,
+    "codex_version" => codex_version,
+    "isolation" => { "home" => "temporary", "codex_home" => "temporary", "real_codex_config_unchanged" => true },
+    "marketplace" => {
+      "name" => "committown",
+      "source_type" => "local-controlled-root",
+      "source_url" => source_url,
+      "sha256" => release.dig("marketplace", "sha256"),
+      "forum_url" => forum_url,
+      "onboarding_readme_verified" => true,
+    },
+    "plugin" => { "id" => PLUGIN_ID, "version" => version, "tree_sha256" => release.dig("plugin", "tree_sha256"), "installed_under_isolated_codex_home" => true },
+    "source_snapshot" => { "tree_sha256" => release.dig("source_snapshot", "tree_sha256"), "license" => "Apache-2.0", "local_hashes_verified" => true },
+    "skill" => { "invocation" => "$vibe-publish:vibe-publish", "discovered_in_fresh_workspace" => true, "resolved_packaged_cli" => true },
+    "offline_doctor" => { "ok_expectedly_false_without_credentials" => true, "credentials" => "missing", "network_requests_made" => false },
+    "credential_storage" => { "default" => "posix-file-0600", "explicit_keychain" => "rejected-before-authorization" },
+    "upgrade_compatibility" => {
+      "marketplace_identity" => "committown",
+      "plugin_remove_and_reinstall" => true,
+      "separate_forum_credential_unchanged" => true,
+      "legacy_reply_cli_api_supported_through" => "0.6.0",
+    },
+    "proof_boundaries" => {
+      "remote_repository_fetched" => false,
+      "remote_ref_verified" => false,
+      "external_install_verified" => false,
+      "forum_reachability_verified" => false,
+      "production_write_verified" => false,
+    },
+    "external_writes" => { "authorization" => false, "publication" => false, "deployment" => false },
+  }
+  File.write(File.expand_path(options[:report]), JSON.pretty_generate(report) + "\n") if options[:report]
+  puts JSON.pretty_generate(report)
+end

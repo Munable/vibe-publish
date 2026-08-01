@@ -9,7 +9,7 @@ Plugin:     <skill-directory>/../../tool/bin/vibe-forum
 Repo-local: <skill-directory>/../../../local-tool/bin/vibe-forum
 ```
 
-Resolve that location to an absolute path and verify it with `--version`. The CLI supports `auth`, `doctor`, `site-info`, `edit-info`, `logout --revoke`, `image-info`, `image-upload`, `review-request`, and `publish`. Plain `doctor` and `image-info` are local, read-only checks with no network request. `doctor --online`, `site-info`, and `edit-info --post-id <id>` are authenticated read-only requests; `edit-info` returns only the current account's exact bilingual post, author-original locale, optional image, and current version. `image-upload` and `publish` are separate external writes with separate exact confirmations. `logout --revoke` removes the local credential only after the server confirms self-revocation. Keep manifests and review reports in a unique directory under the operating system's temporary directory, never in the user's repository. This Alpha stores the complete narrow User API credential at `~/.config/vibe-forum/credentials.json` with exact owner-only `0600` permissions on both macOS and Linux/POSIX. Keychain integration is retired; explicit `--credential-backend keychain` fails before browser authorization or listener startup. Never place the key in a project `.env`, Skill, prompt, or manifest.
+Resolve that location to an absolute path and verify it with `--version`. The CLI supports `auth`, `doctor`, `site-info`, `edit-info`, `logout --revoke`, `image-info`, `image-upload`, `review-request`, and `publish`. Plain `doctor` and `image-info` are local, read-only checks with no network request. `doctor --online`, `site-info`, and `edit-info --post-id <id>` are authenticated read-only requests; `edit-info` returns only the current account's exact bilingual post, author-original locale, optional image, and current version. The Skill continues only when that post is a topic first post with titles in both variants. `image-upload` and `publish` are separate external writes with separate exact confirmations. `logout --revoke` removes the local credential only after the server confirms self-revocation. Keep manifests and review reports in a unique directory under the operating system's temporary directory, never in the user's repository. The 0.6 release stores the complete narrow User API credential at `~/.config/vibe-forum/credentials.json` with exact owner-only `0600` permissions on both macOS and Linux/POSIX. This is a plain file, not a secret enclave: another process running as the same OS user may read it. Keychain integration is retired; explicit `--credential-backend keychain` fails before browser authorization or listener startup. Never place the key in a project `.env`, Skill, prompt, manifest, issue, or model context.
 
 ## New topic manifest
 
@@ -21,7 +21,7 @@ Use exactly the two variant keys `en` and `zh-CN`:
   "operation": "create_topic",
   "source_locale": "zh-CN",
   "target": {
-    "category_slug": "build-logs"
+    "category_slug": "uncategorized"
   },
   "variants": {
     "en": {
@@ -38,6 +38,8 @@ Use exactly the two variant keys `en` and `zh-CN`:
 
 Both topic variants require a non-empty title and body.
 
+`category_slug` remains a wire field for protocol compatibility. It is not a user choice or visible information-architecture label. For a live write, populate it only from the single internal publication destination returned by the current `site-info`; never ask the user for it or show it in the final preview. If `site-info` returns zero or more than one destination, or the manifest does not match the sole returned destination, fail closed and rebuild only after the forum configuration is corrected. A draft made without live `site-info` is not publish-ready and must be rebound, reviewed, and confirmed before writing.
+
 ### Optional featured-shelf request
 
 An ordinary topic omits `feature_request` and creates no server-AI call. Only a new topic that passed the local policy review may include the following exact object:
@@ -48,7 +50,7 @@ An ordinary topic omits `feature_request` and creates no server-AI call. Only a 
     "schema": "vibe-feature-request/v1",
     "requested": true,
     "candidate_kind": "build_log",
-    "local_skill_version": "vibe-publish/0.5.3",
+    "local_skill_version": "vibe-publish/0.6.0",
     "precheck_result": "passed",
     "public_disclosure_accepted": true,
     "third_party_ai_processing_accepted": true
@@ -56,7 +58,7 @@ An ordinary topic omits `feature_request` and creates no server-AI call. Only a 
 }
 ```
 
-`candidate_kind` must be one of `build_log`, `problem_solution`, `open_source`, `tool_method`, or `failure_lesson`. The two acceptance fields may be true only after the exact final preview explains the credit use, the sanitized original-language content sent for one third-party model decision, the operational fields made public, and the author/content fields withheld. A failure, timeout, invalid result, or exhausted budget leaves the topic public as ordinary and must not trigger deletion, hiding, replying, or penalties.
+`candidate_kind` must be one of `build_log`, `problem_solution`, `open_source`, `tool_method`, or `failure_lesson`. `open_source` is a legacy wire label retained for rolling compatibility; for a project share, it does **not** require the work to be open source. Open-source, closed-source, self-owned, and commercial projects can all use that value when the post contains concrete project work. The two acceptance fields may be true only after the exact final preview explains the credit use, the sanitized original-language content sent for one third-party model decision, the operational fields made public, and the author/content fields withheld. A legacy transparency response may retain an internal `category` audit field; it represents compatibility metadata, not a user-selectable board or current information architecture, and must not be highlighted in the preview. A failure, timeout, invalid result, or exhausted budget leaves the topic public as ordinary and must not trigger deletion, hiding, replying, or penalties.
 
 ## Optional single image
 
@@ -95,9 +97,11 @@ Use the real `id` and `short_url` returned by that command. Add exactly this obj
 
 This fragment illustrates only the image fields; the complete manifest still needs schema, operation, source locale, target, and topic titles when applicable. A manifest without `image` must render no image. With `image`, each language body must render exactly one copy of that same server-returned value and no remote, HTML, reference-style, duplicate, or additional image. Image syntax inside a code block remains ordinary code. The server verifies the upload ID, exact short URL, owner, media type, size, both language reference lists, and the rendered image structure. `image-upload` copies the explicit file into a private `0600` snapshot, binds it to the SHA-256 the user confirmed from `image-info`, and uploads only that snapshot.
 
-## Reply manifest
+## Legacy reply compatibility (0.6 only)
 
-Omit titles from reply variants. Include `reply_to_post_number` only when the user explicitly targets a particular reply:
+The current Skill never creates or submits this manifest. For a new reply or reply edit, direct the user to CommitTown's native **Reply / 回复** or edit action. The 0.6 CLI and server API continue accepting the existing `reply` envelope for one rolling-compatibility release so an already-reviewed 0.5 manifest does not break during upgrade. Do not present that compatibility route as the new workflow.
+
+Legacy reply variants omit titles. `reply_to_post_number` remains optional when the old caller explicitly targets a particular reply:
 
 ```json
 {
@@ -119,7 +123,7 @@ Omit titles from reply variants. Include `reply_to_post_number` only when the us
 }
 ```
 
-## Author edit manifest
+## First-post author edit manifest
 
 Fetch the current owned post before drafting an edit:
 
@@ -127,7 +131,7 @@ Fetch the current owned post before drafting an edit:
 vibe-forum edit-info --post-id 42
 ```
 
-Use the returned `target.post_id`, `target.expected_version`, `source_locale`, variants, and optional `image` as the base. A topic's first-post edit requires both titles; a reply edit omits both titles. The author-original locale cannot change.
+Continue only when the returned `en` and `zh-CN` variants both contain titles, proving the target is the topic's first post. Otherwise stop and direct the user to the forum's native reply editor. Use the returned `target.post_id`, `target.expected_version`, `source_locale`, variants, and optional `image` as the base. The author-original locale cannot change.
 
 ```json
 {
@@ -169,11 +173,11 @@ First run `review-request` for the final manifest. Copy its returned `content_sh
 
 Allowed decisions are `allow`, `warn`, and `block`. The CLI refuses `block` and refuses a digest that does not match the exact outbound manifest.
 
-## Live account and category discovery
+## Live account and internal destination resolution
 
-After authorization, run `doctor --online` and `site-info`. Verify the returned username is the account the user intends to publish as. For a new topic, select a `category_slug` from the writable categories returned for that account. Category IDs are deployment-specific compatibility inputs; never copy an ID from a local demo, document, another account, or another forum.
+After authorization, run `doctor --online` and `site-info`. Verify the returned username is the account the user intends to publish as. For a new topic, require exactly one internal publication destination and bind its returned slug to the wire manifest. Never ask the user to select it, expose its name/slug in the preview, or copy an ID from a local demo, document, another account, or another forum. Zero or multiple destinations stop the workflow without writing.
 
-The same live `site-info` response includes `content_limits` for reply bodies, first-post bodies, and topic titles. Check both `en` and `zh-CN` against those values before requesting publication confirmation. The CLI fetches and enforces the limits again immediately before preview and write; when one version is too short or too long, update that version and regenerate the content-bound local review before retrying.
+The same live `site-info` response includes `content_limits` for first-post bodies and topic titles, plus reply limits retained for the 0.6 legacy CLI/API surface. For the Skill's supported topic operations, check both `en` and `zh-CN` against the first-post and title values before requesting publication confirmation. The CLI fetches and enforces the limits again immediately before preview and write; when one version is too short or too long, update that version and regenerate the content-bound local review before retrying.
 
 ## Submission sequence
 

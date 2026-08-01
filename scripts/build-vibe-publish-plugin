@@ -1,0 +1,134 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "json"
+
+ROOT = File.expand_path("..", __dir__)
+DEFAULT_PLUGIN = File.join(ROOT, "codex-plugins", "vibe-publish")
+PLUGIN =
+  [DEFAULT_PLUGIN, File.join(ROOT, "plugins", "vibe-publish")]
+    .find { |path| Dir.exist?(path) } || DEFAULT_PLUGIN
+CHECK_ONLY = ARGV == ["--check"]
+abort "Usage: scripts/build-vibe-publish-plugin [--check]" unless ARGV.empty? || CHECK_ONLY
+
+VERSION = File.read(File.join(ROOT, "local-tool", "VERSION"), encoding: "UTF-8").strip
+REPOSITORY_URL = "https://github.com/Munable/vibe-publish"
+DEFAULT_PROMPT =
+  "Use $vibe-publish:vibe-publish to prepare or edit one bilingual CommitTown topic and stop for confirmation."
+
+abort "local-tool/VERSION must contain a SemVer release" unless VERSION.match?(/\A\d+\.\d+\.\d+\z/)
+abort "Plugin interface.defaultPrompt exceeds Codex's 128-character limit" if DEFAULT_PROMPT.length > 128
+
+copies = {
+  ".agents/skills/vibe-publish/SKILL.md" => "skills/vibe-publish/SKILL.md",
+  ".agents/skills/vibe-publish/agents/openai.yaml" => "skills/vibe-publish/agents/openai.yaml",
+  ".agents/skills/vibe-publish/references/publish-contract.md" =>
+    "skills/vibe-publish/references/publish-contract.md",
+  ".agents/skills/vibe-publish/references/editorial-method.md" =>
+    "skills/vibe-publish/references/editorial-method.md",
+  ".agents/skills/vibe-publish/references/review-policy.md" =>
+    "skills/vibe-publish/references/review-policy.md",
+  "local-tool/VERSION" => "tool/VERSION",
+  "local-tool/LICENSE" => "LICENSE",
+  "local-tool/bin/vibe-forum" => "tool/bin/vibe-forum",
+  "local-tool/lib/vibe_forum_local.rb" => "tool/lib/vibe_forum_local.rb",
+}.freeze
+
+manifest = {
+  "name" => "vibe-publish",
+  "version" => VERSION,
+  "description" => "Open-source carrier for user-confirmed bilingual CommitTown topics and conflict-safe first-post edits.",
+  "author" => { "name" => "CommitTown", "url" => "https://committown.com" },
+  "license" => "Apache-2.0",
+  "repository" => REPOSITORY_URL,
+  "homepage" => "https://committown.com",
+  "skills" => "./skills/",
+  "interface" => {
+    "displayName" => "Vibe Publish",
+    "shortDescription" => "Create or edit bilingual CommitTown topics safely.",
+    "longDescription" =>
+      "Packages the Apache-2.0 Vibe Publish Skill and deterministic local Ruby CLI for bilingual topics and conflict-safe first-post edits.",
+    "developerName" => "CommitTown",
+    "category" => "Productivity",
+    "capabilities" => [
+      "Local bilingual preview",
+      "One user-confirmed PNG or JPEG upload",
+      "User-confirmed topic publishing",
+      "Version-checked first-post edits",
+    ],
+    "defaultPrompt" => DEFAULT_PROMPT,
+  },
+}
+
+expected = copies.each_with_object({}) do |(source, destination), files|
+  files[File.join(PLUGIN, destination)] = File.binread(File.join(ROOT, source))
+end
+expected[File.join(PLUGIN, ".codex-plugin", "plugin.json")] = JSON.pretty_generate(manifest) + "\n"
+
+allowed_files =
+  (
+    expected.keys +
+      [
+        File.join(PLUGIN, "README.md"),
+        File.join(PLUGIN, "CONTRIBUTING.md"),
+        File.join(PLUGIN, "SECURITY.md"),
+      ]
+  ).sort.freeze
+allowed_directories = allowed_files.flat_map do |path|
+  directories = []
+  current = File.dirname(path)
+  while current.start_with?("#{PLUGIN}/")
+    directories << current
+    current = File.dirname(current)
+  end
+  directories
+end.uniq.freeze
+
+def validate_packaged_tree!(plugin, allowed_files, allowed_directories, require_complete:)
+  abort "Packaged Plugin directory is missing: #{plugin}" unless Dir.exist?(plugin)
+
+  entries =
+    Dir.glob(File.join(plugin, "**", "*"), File::FNM_DOTMATCH)
+      .reject { |path| %w[. ..].include?(File.basename(path)) }
+      .sort
+  entries.each do |path|
+    stat = File.lstat(path)
+    relative = path.delete_prefix("#{plugin}/")
+    abort "Packaged Plugin contains a symlink: #{relative}" if stat.symlink?
+
+    if stat.directory?
+      abort "Packaged Plugin contains an unexpected directory: #{relative}" unless allowed_directories.include?(path)
+    elsif stat.file?
+      abort "Packaged Plugin contains an unexpected file: #{relative}" unless allowed_files.include?(path)
+    else
+      abort "Packaged Plugin contains a non-regular entry: #{relative}"
+    end
+  end
+
+  return unless require_complete
+
+  missing = allowed_files.reject { |path| File.file?(path) && !File.lstat(path).symlink? }
+  abort "Packaged Plugin is incomplete:\n#{missing.join("\n")}" unless missing.empty?
+end
+
+validate_packaged_tree!(PLUGIN, allowed_files, allowed_directories, require_complete: CHECK_ONLY)
+
+if CHECK_ONLY
+  stale = expected.each_with_object([]) do |(path, content), paths|
+    paths << path unless File.file?(path) && File.binread(path) == content
+  end
+  abort "Vibe Publish plugin is stale; run scripts/build-vibe-publish-plugin:\n#{stale.join("\n")}" unless stale.empty?
+  abort "Packaged CLI is not executable" unless File.executable?(File.join(PLUGIN, "tool", "bin", "vibe-forum"))
+
+  puts "Vibe Publish plugin is synchronized."
+  exit
+end
+
+expected.each do |path, content|
+  FileUtils.mkdir_p(File.dirname(path))
+  File.binwrite(path, content)
+end
+FileUtils.chmod(0o755, File.join(PLUGIN, "tool", "bin", "vibe-forum"))
+validate_packaged_tree!(PLUGIN, allowed_files, allowed_directories, require_complete: true)
+puts "Built #{PLUGIN} (#{VERSION})."

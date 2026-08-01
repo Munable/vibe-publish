@@ -22,11 +22,14 @@ command = ARGV.shift
 parser =
   OptionParser.new do |opts|
     opts.banner = "Usage: vibe-forum <auth|doctor|site-info|edit-info|logout|image-info|image-upload|review-request|publish|version> [options]"
+    opts.separator ""
+    opts.separator "Compatibility: reply and reply-edit manifests remain accepted in 0.6.0 only;"
+    opts.separator "new replies should use CommitTown's native forum Reply/Edit controls."
     opts.on("--site URL", "Forum base URL") { |value| options[:site] = value }
     opts.on("--credentials PATH", "Credential file") { |value| options[:credentials] = value }
     opts.on(
       "--credential-backend BACKEND",
-      "Credential storage for auth: auto or file; keychain is unsupported in this alpha",
+      "Credential storage for auth: auto or file; keychain is unsupported in Vibe Publish 0.6",
     ) { |value| options[:credential_backend] = value == "auto" ? nil : value }
     opts.on("--manifest PATH", "vibe-publish/v3 bilingual publication JSON") do |value|
       options[:manifest] = value

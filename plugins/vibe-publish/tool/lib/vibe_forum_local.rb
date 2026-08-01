@@ -15,6 +15,7 @@ require "uri"
 module VibeForumLocal
   VERSION_FILE = File.expand_path("../VERSION", __dir__)
   VERSION = File.read(VERSION_FILE, encoding: "UTF-8").strip
+  LEGACY_REPLY_COMPATIBLE_THROUGH = "0.6.0"
   SCOPE = "vibe-governance:publish"
   REVIEW_SCHEMA = "vibe-local-review/v1"
   DEFAULT_CREDENTIALS = File.expand_path("~/.config/vibe-forum/credentials.json")
@@ -202,6 +203,34 @@ module VibeForumLocal
           minimum: limits.fetch("min_topic_title_length"),
           maximum: limits.fetch("max_topic_title_length"),
         )
+      end
+
+      payload
+    end
+
+    def validate_live_destination!(payload, site_info)
+      return payload unless payload.fetch("operation") == "create_topic"
+
+      destinations = site_info["categories"]
+      unless destinations.is_a?(Array) && destinations.length == 1
+        count = destinations.is_a?(Array) ? destinations.length : 0
+        raise Error,
+              "Forum must expose exactly one internal publication destination; received #{count}. " \
+                "No publication was sent"
+      end
+
+      destination = destinations.fetch(0)
+      target = payload.fetch("target")
+      matches =
+        if target.key?("category_slug")
+          target.fetch("category_slug").to_s == destination.fetch("slug").to_s
+        else
+          target.fetch("category_id").to_i == destination.fetch("id").to_i
+        end
+      unless matches
+        raise Error,
+              "Publication manifest is not bound to the forum's sole internal publication destination. " \
+                "Refresh site-info, rebuild the manifest, and review it again; no publication was sent"
       end
 
       payload
@@ -461,7 +490,7 @@ module VibeForumLocal
     BACKEND_KEYCHAIN = "macos-keychain"
     BACKEND_FILE = "posix-file"
     KEYCHAIN_UNSUPPORTED_MESSAGE =
-      "Keychain credential storage is not supported in this alpha; use auto or file"
+      "Keychain credential storage is not supported in Vibe Publish 0.6; use auto or file"
 
     def self.load(
       path = DEFAULT_CREDENTIALS,
@@ -875,19 +904,21 @@ module VibeForumLocal
   module WritePreflight
     module_function
 
-    def verify!(credentials:, client:, now: Time.now, allow_loopback_http: false)
+    def verify!(credentials:, client:, now: Time.now, allow_loopback_http: false, payload: nil)
       validated =
         Credentials.validate_data!(
           credentials,
           now: now,
           allow_loopback_http: allow_loopback_http,
         )
-      SiteInfo.new(
+      site_info = SiteInfo.new(
         credentials: validated,
         client: client,
         now: now,
         allow_loopback_http: allow_loopback_http,
       ).fetch
+      Envelope.validate_live_destination!(payload, site_info) if payload
+      site_info
     end
   end
 
@@ -1335,7 +1366,7 @@ module VibeForumLocal
         nonce: nonce,
         scopes: SCOPE,
         client_id: client_id,
-        application_name: "Vibe Forum Local Publisher",
+        application_name: "CommitTown Local Publisher",
         public_key: public_key.to_pem,
         padding: "oaep",
         auth_redirect: callback,
@@ -1380,7 +1411,7 @@ module VibeForumLocal
     end
 
     def respond_to_callback(socket, status:, message:)
-      body = "<!doctype html><meta charset=\"utf-8\"><title>Vibe Forum</title><p>#{message}</p>"
+      body = "<!doctype html><meta charset=\"utf-8\"><title>CommitTown</title><p>#{message}</p>"
       socket.write "HTTP/1.1 #{status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: #{body.bytesize}\r\nConnection: close\r\n\r\n#{body}"
     rescue SystemCallError
       nil
@@ -1423,13 +1454,26 @@ module VibeForumLocal
     def request(payload)
       reject_secrets!(payload)
 
-      {
+      result = {
         "schema" => REVIEW_SCHEMA,
         "content_sha256" => content_digest(payload),
         "instruction" =>
-          "Review for accidental secrets, pure promotion, obvious spam, and bilingual readability. Do not rewrite or publish. Return decision allow, warn, or block with findings.",
+          "Review the exact bilingual bundle for accidental secrets, unauthorized private content, factual or translation mismatch, low-information repeated promotion, truthful relationship disclosure, and reader-considerate writing. Genuine Vibe Coding work may come from any field. Substantive closed-source or commercial projects, job-seeking, hiring, consulting, and collaboration are allowed when the relationship is clear; commercial interest alone is never a block or ordinary-post reason. Block promotion only when it is low-information or repeated and mainly asks readers to buy, join, contact, use discounts or referrals, or enter a lead funnel. Reader structure, title, length, fluency, and style issues should warn, not block. Before allow, confirm one main axis; a concise, truthful human opening for a topic or a direct first-sentence response for a reply; a title, opening, and optional headings that reveal the situation and current result before technical detail; no repeated conclusions or feature inventory; and natural, fact-equivalent English and Chinese. Do not rewrite or publish. Return decision allow, warn, or block with findings.",
         "content" => payload,
       }
+      if legacy_reply_payload?(payload)
+        result["compatibility_notice"] =
+          "Legacy reply envelopes remain accepted through #{LEGACY_REPLY_COMPATIBLE_THROUGH}; " \
+          "the 0.6 Skill directs new replies and reply edits to CommitTown's native forum controls."
+      end
+      result
+    end
+
+    def legacy_reply_payload?(payload)
+      return true if payload["operation"] == "reply"
+      return false unless payload["operation"] == "edit_post"
+
+      payload.fetch("variants", {}).values.none? { |variant| variant.is_a?(Hash) && variant.key?("title") }
     end
 
     def validate!(report, payload)
@@ -1452,7 +1496,9 @@ module VibeForumLocal
         SECRET_PATTERNS.each_with_object([]) do |(label, pattern), matches|
           matches << label if text.match?(pattern)
         end
-      findings << "promotion language needs human attention" if text.match?(PROMOTION_PATTERN)
+      if text.match?(PROMOTION_PATTERN)
+        findings << "possible promotion terms: verify substantive context, repetition, and relationship disclosure"
+      end
       findings
     end
 
@@ -1546,6 +1592,7 @@ module VibeForumLocal
         now: current_time,
         allow_loopback_http: @allow_loopback_http,
       ).fetch
+      Envelope.validate_live_destination!(payload, site_info)
       Envelope.validate_live_limits!(payload, site_info.fetch("content_limits"))
       current = current_edit_info(payload)
       preview(payload, report, current: current)
@@ -1558,6 +1605,7 @@ module VibeForumLocal
         client: @client,
         now: current_time,
         allow_loopback_http: @allow_loopback_http,
+        payload: payload,
       )
       @client.post(
         "/vibe-governance/publish.json",
@@ -1607,8 +1655,7 @@ module VibeForumLocal
         @output.puts "Edit post: #{payload.dig("target", "post_id")}"
         @output.puts "Expected version: #{payload.dig("target", "expected_version")}"
       else
-        category = payload.dig("target", "category_slug") || payload.dig("target", "category_id")
-        @output.puts "Create topic in category: #{category}"
+        @output.puts "Create CommitTown topic"
       end
 
       preview_edit_changes(payload, current) if current
@@ -1620,7 +1667,7 @@ module VibeForumLocal
         request = payload.fetch("feature_request")
         @output.puts "Featured shelf request: yes (#{request.fetch("candidate_kind")})"
         @output.puts "Server AI: one requested curation decision; ordinary publication continues if it fails"
-        @output.puts "Public transparency: scoped request ID, minute timestamp, category, result, policy/model, token cost, and duration"
+        @output.puts "Public transparency: scoped request ID, minute timestamp, result, policy/model, token cost, and duration"
         @output.puts "Not public: account, title, body, link, image, or evidence excerpt"
         @output.puts "Third-party AI input: sanitized original-language title and body only"
       else

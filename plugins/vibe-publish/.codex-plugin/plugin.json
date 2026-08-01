@@ -1,23 +1,27 @@
 {
   "name": "vibe-publish",
-  "version": "0.5.3",
-  "description": "Private Alpha carrier for structured, user-confirmed bilingual Vibe Forum publishing and author edits.",
+  "version": "0.6.0",
+  "description": "Open-source carrier for user-confirmed bilingual CommitTown topics and conflict-safe first-post edits.",
   "author": {
-    "name": "Vibe Coding Forum"
+    "name": "CommitTown",
+    "url": "https://committown.com"
   },
+  "license": "Apache-2.0",
+  "repository": "https://github.com/Munable/vibe-publish",
+  "homepage": "https://committown.com",
   "skills": "./skills/",
   "interface": {
     "displayName": "Vibe Publish",
-    "shortDescription": "Create or author-edit bilingual forum posts safely.",
-    "longDescription": "Packages the Vibe Publish Skill and deterministic local Ruby CLI for bilingual private Alpha publishing and conflict-safe author edits.",
-    "developerName": "Vibe Coding Forum",
+    "shortDescription": "Create or edit bilingual CommitTown topics safely.",
+    "longDescription": "Packages the Apache-2.0 Vibe Publish Skill and deterministic local Ruby CLI for bilingual topics and conflict-safe first-post edits.",
+    "developerName": "CommitTown",
     "category": "Productivity",
     "capabilities": [
       "Local bilingual preview",
       "One user-confirmed PNG or JPEG upload",
-      "User-confirmed publishing",
-      "Version-checked author edits"
+      "User-confirmed topic publishing",
+      "Version-checked first-post edits"
     ],
-    "defaultPrompt": "Use $vibe-publish:vibe-publish to prepare or author-edit one bilingual Vibe Forum post and stop for confirmation."
+    "defaultPrompt": "Use $vibe-publish:vibe-publish to prepare or edit one bilingual CommitTown topic and stop for confirmation."
   }
 }

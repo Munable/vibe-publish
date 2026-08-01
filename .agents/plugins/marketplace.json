@@ -1,7 +1,7 @@
 {
-  "name": "vibe-private",
+  "name": "committown",
   "interface": {
-    "displayName": "Vibe Forum Private Alpha"
+    "displayName": "CommitTown"
   },
   "plugins": [
     {

@@ -1,0 +1,18 @@
+{
+  "schema": "vibe-publish/v3",
+  "operation": "create_topic",
+  "source_locale": "en",
+  "target": {
+    "category_slug": "uncategorized"
+  },
+  "variants": {
+    "en": {
+      "title": "What I learned from a failed migration",
+      "body_markdown": "The rollback looked valid, but the data backfill was irreversible."
+    },
+    "zh-CN": {
+      "title": "一次迁移失败后，我真正学到了什么",
+      "body_markdown": "回滚语法看起来没有问题，但数据回填实际上不可逆。"
+    }
+  }
+}

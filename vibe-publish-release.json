@@ -1,90 +1,249 @@
 {
-  "schema": "vibe-codex-plugin-release/v1",
-  "forum_url": "https://discourse-production-1690.up.railway.app",
+  "schema": "vibe-codex-plugin-release/v2",
+  "forum_url": "https://committown.com",
   "source_url": "https://github.com/Munable/vibe-publish",
+  "source": {
+    "url": "https://github.com/Munable/vibe-publish",
+    "declared_ref": "v0.6.0",
+    "remote_repository_fetched": false,
+    "remote_ref_verified": false
+  },
+  "license": {
+    "spdx_id": "Apache-2.0",
+    "path": "LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
   "onboarding": {
     "path": "README.md",
-    "sha256": "0e4c06aba49108c3385fe9c120a4be9a7178d4edef198107e5efe4b8b81b5e75"
+    "sha256": "28645b68a31a41cb8ef793960051e263b25d8336c03d51324de9faa733efe687"
+  },
+  "contributing": {
+    "path": "CONTRIBUTING.md",
+    "sha256": "0137b3c1dba4f2caf99393e61e188d8b6b54fdb1aa02dd1e9fa3e06d3aaed739"
+  },
+  "security": {
+    "path": "SECURITY.md",
+    "sha256": "19bb43d6fdb09c791ab170c1ec0415e071a77000eacd80be80dfd64215f8ee84"
   },
   "marketplace": {
-    "name": "vibe-private",
+    "name": "committown",
     "path": ".agents/plugins/marketplace.json",
-    "sha256": "03925c01bd25478759cec5e081a94c557f50a7a3025cd06b61abd8cfe1616ec3"
+    "sha256": "c5d45942fb5c29543ca5db1e6419dc53a6c461b19f01c9e4929f933eaf4c9b87"
   },
   "plugin": {
-    "id": "vibe-publish@vibe-private",
+    "id": "vibe-publish@committown",
     "name": "vibe-publish",
-    "version": "0.5.3",
+    "version": "0.6.0",
     "source_path": "plugins/vibe-publish",
-    "manifest_sha256": "57519036d7c1636725d93e5a4aa5892486827dedbc869d8de1e06d75716c4c79",
-    "tree_sha256": "08b99f6762844407358925a6b6ea39cb798d95ec7a59b7ab2cd60cff4277fccd",
+    "manifest_sha256": "29e795c0f85dffaf31e724c2814e25e100607812d55ddae21a305d11fecc956d",
+    "tree_sha256": "6f03d93418127351ed32ce3aa4b4d01bf70c78c69c962f566aabfbdfa591d4a4",
     "files": [
       {
         "path": ".codex-plugin/plugin.json",
-        "bytes": 940,
+        "bytes": 1089,
         "mode": "644",
-        "sha256": "57519036d7c1636725d93e5a4aa5892486827dedbc869d8de1e06d75716c4c79"
+        "sha256": "29e795c0f85dffaf31e724c2814e25e100607812d55ddae21a305d11fecc956d"
       },
       {
         "path": "CONTRIBUTING.md",
-        "bytes": 2704,
+        "bytes": 4214,
         "mode": "644",
-        "sha256": "7e5acb8605eaf889eaad0cc8e97f16ff4c0712ff38b0a96b49b012712b2417a0"
+        "sha256": "0137b3c1dba4f2caf99393e61e188d8b6b54fdb1aa02dd1e9fa3e06d3aaed739"
+      },
+      {
+        "path": "LICENSE",
+        "bytes": 11357,
+        "mode": "644",
+        "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
       },
       {
         "path": "README.md",
-        "bytes": 5597,
+        "bytes": 11195,
         "mode": "644",
-        "sha256": "c10f9d3d6dbfa671660725d86e7513eba58f1a0665620414a7cdc55f7eabdd32"
+        "sha256": "e268b510c6a0dc7a1f1c71a674763cf987403fc3a4c569cf0e78feb612e709ce"
+      },
+      {
+        "path": "SECURITY.md",
+        "bytes": 1901,
+        "mode": "644",
+        "sha256": "19bb43d6fdb09c791ab170c1ec0415e071a77000eacd80be80dfd64215f8ee84"
       },
       {
         "path": "skills/vibe-publish/SKILL.md",
-        "bytes": 17009,
+        "bytes": 21257,
         "mode": "644",
-        "sha256": "7b2e56bbdb90df8d945bea33b472376ff642d929e9f9c0a123a1cd0ecc04a187"
+        "sha256": "b8630bf367630ce4d4090fe2462d2b56b84de2ce2111173f16f6b3391171705c"
       },
       {
         "path": "skills/vibe-publish/agents/openai.yaml",
-        "bytes": 328,
+        "bytes": 327,
         "mode": "644",
-        "sha256": "0128db429815c0ea4fa2b2169fa5aefd4c80cffbff6d81bb5f030a4bdf56a262"
+        "sha256": "2cbe93ba2fcbb1c15314db1ea85eabc7dfb58916f8ca34b3b0972885d5f1d08a"
       },
       {
         "path": "skills/vibe-publish/references/editorial-method.md",
-        "bytes": 4503,
+        "bytes": 6521,
         "mode": "644",
-        "sha256": "db541c172fde6947d4134242bafd63a749f91c5b22472d645f97e44b11524fc4"
+        "sha256": "35f37e43997d0f3f9ff954ce978d42bc341beedd38fd1cbf79c359a243fea4f9"
       },
       {
         "path": "skills/vibe-publish/references/publish-contract.md",
-        "bytes": 9565,
+        "bytes": 11704,
         "mode": "644",
-        "sha256": "94a886da4432e5e932e723d04e5caf2d4ccae05249d2831ccfdb9b307943ad95"
+        "sha256": "5fd440f0afbc2c6f144ec146a6676f01a9286d1cae0424e952bbcf2ce8937f82"
       },
       {
         "path": "skills/vibe-publish/references/review-policy.md",
-        "bytes": 5648,
+        "bytes": 7534,
         "mode": "644",
-        "sha256": "ace4a72d57295c8e549615a90cd012a1bd856adc052ab2fe970c85cc5237c851"
+        "sha256": "842bbb06a3b7e33fdcabb0723d4f19ede070899856bb8352f8994adf991a2e99"
       },
       {
         "path": "tool/VERSION",
         "bytes": 6,
         "mode": "644",
-        "sha256": "27ecff1fcdaf65ab46c1bb99c1072d6d134a0e8dd97dd95cfa88696b9ed453b2"
+        "sha256": "97a5d6e540a6120d09c39ddb667e0e8e2bac7fcc2ffef813b82e08fd60365bce"
       },
       {
         "path": "tool/bin/vibe-forum",
-        "bytes": 6656,
+        "bytes": 6873,
         "mode": "755",
-        "sha256": "d394067c6e7db4688fe3fb28288156c8c200a9ee5507c6cca4dcc7a0406d5c85"
+        "sha256": "7c42120c9246d9c9cab89d24b21ae0748a1324acdd2c1fcc26a98f8a6d997f01"
       },
       {
         "path": "tool/lib/vibe_forum_local.rb",
-        "bytes": 61400,
+        "bytes": 64252,
         "mode": "644",
-        "sha256": "62bd8f34a3c3bd66a711f5fa1fec261818a8e78d2493ff6180c25971fc26ee48"
+        "sha256": "b43915d6dc0bcef14f8973e38b2071d9b0cd850f2b813727648be203ecb88f45"
       }
     ]
+  },
+  "source_snapshot": {
+    "tree_sha256": "47a374888816618bd06010be1200b55fe109580a554c77b747e60fc7f6a2cd84",
+    "files": [
+      {
+        "path": ".agents/skills/vibe-publish/SKILL.md",
+        "bytes": 21257,
+        "mode": "644",
+        "sha256": "b8630bf367630ce4d4090fe2462d2b56b84de2ce2111173f16f6b3391171705c"
+      },
+      {
+        "path": ".agents/skills/vibe-publish/agents/openai.yaml",
+        "bytes": 327,
+        "mode": "644",
+        "sha256": "2cbe93ba2fcbb1c15314db1ea85eabc7dfb58916f8ca34b3b0972885d5f1d08a"
+      },
+      {
+        "path": ".agents/skills/vibe-publish/references/editorial-method.md",
+        "bytes": 6521,
+        "mode": "644",
+        "sha256": "35f37e43997d0f3f9ff954ce978d42bc341beedd38fd1cbf79c359a243fea4f9"
+      },
+      {
+        "path": ".agents/skills/vibe-publish/references/publish-contract.md",
+        "bytes": 11704,
+        "mode": "644",
+        "sha256": "5fd440f0afbc2c6f144ec146a6676f01a9286d1cae0424e952bbcf2ce8937f82"
+      },
+      {
+        "path": ".agents/skills/vibe-publish/references/review-policy.md",
+        "bytes": 7534,
+        "mode": "644",
+        "sha256": "842bbb06a3b7e33fdcabb0723d4f19ede070899856bb8352f8994adf991a2e99"
+      },
+      {
+        "path": "local-tool/LICENSE",
+        "bytes": 11357,
+        "mode": "644",
+        "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+      },
+      {
+        "path": "local-tool/README.md",
+        "bytes": 8465,
+        "mode": "644",
+        "sha256": "54e9f1ecefa6bce548fd27a79bfa4e8dc93ceda43af3df2f271c10dc20181cdd"
+      },
+      {
+        "path": "local-tool/VERSION",
+        "bytes": 6,
+        "mode": "644",
+        "sha256": "97a5d6e540a6120d09c39ddb667e0e8e2bac7fcc2ffef813b82e08fd60365bce"
+      },
+      {
+        "path": "local-tool/bin/vibe-forum",
+        "bytes": 6873,
+        "mode": "755",
+        "sha256": "7c42120c9246d9c9cab89d24b21ae0748a1324acdd2c1fcc26a98f8a6d997f01"
+      },
+      {
+        "path": "local-tool/examples/bilingual-topic.json",
+        "bytes": 521,
+        "mode": "644",
+        "sha256": "8d951837b6ab640dacb8c90b8764aa363e92ebad22b9edda2df3191332202150"
+      },
+      {
+        "path": "local-tool/examples/local-publishing-build-log.md",
+        "bytes": 715,
+        "mode": "644",
+        "sha256": "e51a36c441b3ecd2e62bdedfa6072a890d278bbfed1416e7bfafd43708085313"
+      },
+      {
+        "path": "local-tool/lib/vibe_forum_local.rb",
+        "bytes": 64252,
+        "mode": "644",
+        "sha256": "b43915d6dc0bcef14f8973e38b2071d9b0cd850f2b813727648be203ecb88f45"
+      },
+      {
+        "path": "local-tool/test/vibe_forum_local_test.rb",
+        "bytes": 62311,
+        "mode": "644",
+        "sha256": "820fb65e6edee25bc0fe958cb1f49f975ee3952a7326ebfae40b8611aa0fe041"
+      },
+      {
+        "path": "local-tool/test/vibe_publish_plugin_package_test.rb",
+        "bytes": 9925,
+        "mode": "644",
+        "sha256": "7a9aa5e3d0d2520bd46d86a17a70b2121c33f5a01fb31ece6df0436da2782809"
+      },
+      {
+        "path": "scripts/accept-vibe-publish-online-auth",
+        "bytes": 5623,
+        "mode": "755",
+        "sha256": "27f736b8ab10b80871b50d67598015319b09f0b82570c5e2e64596e1dab50440"
+      },
+      {
+        "path": "scripts/accept-vibe-publish-plugin-install",
+        "bytes": 16460,
+        "mode": "755",
+        "sha256": "1bd987185870d15ab858ffb121c3308c00732d88acf125b3c435b50cb1abd28c"
+      },
+      {
+        "path": "scripts/build-vibe-publish-marketplace",
+        "bytes": 17219,
+        "mode": "755",
+        "sha256": "52c147da3d1b36b803f56ea2c2f8cb34b4bdb2fa48e47693c3b6ed41a1945728"
+      },
+      {
+        "path": "scripts/build-vibe-publish-plugin",
+        "bytes": 5365,
+        "mode": "755",
+        "sha256": "6261df1762dbe4f8f51aa626e35db82aee50449f5d73675299d1d0268c98a417"
+      },
+      {
+        "path": "scripts/test/vibe_publish_marketplace_builder_test.rb",
+        "bytes": 6199,
+        "mode": "644",
+        "sha256": "8aca07f5193d68f62456e0dd74c4d7406051ac73f651846efbee2f57dd694726"
+      }
+    ]
+  },
+  "verification": {
+    "local_source_snapshot_hashed": true,
+    "local_plugin_tree_hashed": true,
+    "remote_repository_fetched": false,
+    "remote_ref_verified": false,
+    "external_install_verified": false,
+    "forum_reachability_verified": false,
+    "production_write_verified": false
   }
 }

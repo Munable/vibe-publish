@@ -1,0 +1,100 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "json"
+require "open3"
+require "optparse"
+require "uri"
+
+ROOT = File.expand_path("..", __dir__)
+PHASES = %w[authorize verify revoke].freeze
+phase = ARGV.shift
+abort "Usage: scripts/accept-vibe-publish-online-auth <authorize|verify|revoke> --plugin-root DIR --state-dir DIR [--site URL]" unless PHASES.include?(phase)
+
+options = {}
+OptionParser.new do |parser|
+  parser.on("--plugin-root DIR", "Installed plugin root returned by codex plugin add --json") { |v| options[:plugin_root] = v }
+  parser.on("--state-dir DIR", "Private directory outside the repository for acceptance credentials") { |v| options[:state_dir] = v }
+  parser.on("--site URL", "Expected forum URL (required for authorize)") { |v| options[:site] = v }
+end.parse!
+
+abort "--plugin-root is required" if options[:plugin_root].to_s.empty?
+abort "--state-dir is required" if options[:state_dir].to_s.empty?
+plugin_root = File.realpath(File.expand_path(options.fetch(:plugin_root)))
+state_dir = File.expand_path(options.fetch(:state_dir))
+abort "State directory must be outside the product repository" if state_dir == ROOT || state_dir.start_with?("#{ROOT}/")
+
+manifest_path = File.join(plugin_root, ".codex-plugin", "plugin.json")
+manifest = JSON.parse(File.read(manifest_path, encoding: "UTF-8"))
+abort "Installed plugin is not vibe-publish" unless manifest["name"] == "vibe-publish"
+abort "Installed plugin is not Apache-2.0" unless manifest["license"] == "Apache-2.0"
+plugin_identity = {
+  "name" => manifest.fetch("name"),
+  "version" => manifest.fetch("version"),
+  "license" => manifest.fetch("license"),
+}
+cli = File.join(plugin_root, "tool", "bin", "vibe-forum")
+abort "Packaged CLI is not executable" unless File.executable?(cli)
+
+FileUtils.mkdir_p(state_dir, mode: 0o700)
+File.chmod(0o700, state_dir)
+credentials = File.join(state_dir, "credentials.json")
+
+def capture(cli, *args)
+  stdout, stderr, status = Open3.capture3(cli, *args)
+  [stdout, stderr, status]
+end
+
+def parse_json!(text, label)
+  JSON.parse(text)
+rescue JSON::ParserError => e
+  abort "#{label} returned invalid JSON: #{e.message}"
+end
+
+def safe_site!(value)
+  uri = URI(value.to_s)
+  loopback = %w[127.0.0.1 localhost ::1].include?(uri.hostname)
+  abort "Site must use HTTPS (plain HTTP is allowed only for loopback testing)" unless uri.scheme == "https" || (uri.scheme == "http" && loopback)
+  abort "Site URL must not contain credentials, query, or fragment" if uri.user || uri.password || uri.query || uri.fragment
+  value
+rescue URI::InvalidURIError => e
+  abort "Invalid site URL: #{e.message}"
+end
+
+case phase
+when "authorize"
+  site = safe_site!(options[:site] || abort("--site is required for authorize"))
+  abort "Acceptance credential already exists; verify or revoke it first" if File.exist?(credentials)
+  print "Type `authorize #{site}` to start the real narrow device-authorization flow: "
+  abort "Authorization cancelled" unless $stdin.gets&.strip == "authorize #{site}"
+  success = system(cli, "auth", "--site", site, "--credentials", credentials)
+  abort "Authorization did not complete" unless success
+  abort "Credential file permissions are not 0600" unless (File.stat(credentials).mode & 0o777) == 0o600
+  stdout, stderr, status = capture(cli, "doctor", "--online", "--site", site, "--credentials", credentials)
+  abort "Online doctor failed: #{stderr}\n#{stdout}" unless status.success?
+  doctor = parse_json!(stdout, "online doctor")
+  abort "Online doctor did not make its expected read-only request" unless doctor["network_requests_made"] == true
+  stdout, stderr, status = capture(cli, "site-info", "--credentials", credentials)
+  abort "site-info failed: #{stderr}\n#{stdout}" unless status.success?
+  info = parse_json!(stdout, "site-info")
+  puts JSON.pretty_generate("authorized" => true, "plugin" => plugin_identity, "site" => info["site_url"], "username" => info.dig("user", "username"), "scope" => info["scope"], "publish_schema" => info["publish_schema"], "publication_attempted" => false, "remote_source_verified" => false)
+when "verify"
+  site = safe_site!(options[:site] || JSON.parse(File.read(credentials, encoding: "UTF-8")).fetch("site"))
+  stdout, stderr, status = capture(cli, "doctor", "--online", "--site", site, "--credentials", credentials)
+  abort "Online doctor failed: #{stderr}\n#{stdout}" unless status.success?
+  info_stdout, info_stderr, info_status = capture(cli, "site-info", "--credentials", credentials)
+  abort "site-info failed: #{info_stderr}\n#{info_stdout}" unless info_status.success?
+  info = parse_json!(info_stdout, "site-info")
+  puts JSON.pretty_generate("verified" => true, "plugin" => plugin_identity, "site" => info["site_url"], "username" => info.dig("user", "username"), "scope" => info["scope"], "publication_attempted" => false, "remote_source_verified" => false)
+when "revoke"
+  data = JSON.parse(File.read(credentials, encoding: "UTF-8"))
+  site = safe_site!(data.fetch("site"))
+  print "Type `revoke #{site}` to revoke the real server key and remove the isolated credential: "
+  abort "Revocation cancelled" unless $stdin.gets&.strip == "revoke #{site}"
+  stdout, stderr, status = capture(cli, "logout", "--revoke", "--credentials", credentials)
+  abort "Revocation failed; credential was kept: #{stderr}\n#{stdout}" unless status.success?
+  result = parse_json!(stdout, "logout --revoke")
+  abort "Credential still exists after successful revoke" if File.exist?(credentials)
+  puts JSON.pretty_generate(result.merge("plugin" => plugin_identity, "publication_attempted" => false, "remote_source_verified" => false))
+end
