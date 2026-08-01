@@ -23,7 +23,7 @@ parser =
   OptionParser.new do |opts|
     opts.banner = "Usage: vibe-forum <auth|doctor|site-info|edit-info|logout|image-info|image-upload|review-request|publish|version> [options]"
     opts.separator ""
-    opts.separator "Compatibility: reply and reply-edit manifests remain accepted in 0.6.0 only;"
+    opts.separator "Compatibility: reply and reply-edit publishing retired after 0.6.0;"
     opts.separator "new replies should use CommitTown's native forum Reply/Edit controls."
     opts.on("--site URL", "Forum base URL") { |value| options[:site] = value }
     opts.on("--credentials PATH", "Credential file") { |value| options[:credentials] = value }
@@ -71,11 +71,11 @@ if help_requested
   exit
 end
 
-def publication_payload(options)
+def publication_payload(options, allow_retired_reply: false)
   raise VibeForumLocal::Error, "--manifest is required" if options[:manifest].to_s.empty?
 
   payload = JSON.parse(File.read(options[:manifest], encoding: "UTF-8"))
-  VibeForumLocal::Envelope.validate!(payload)
+  VibeForumLocal::Envelope.validate!(payload, allow_retired_reply: allow_retired_reply)
 end
 
 begin
@@ -166,7 +166,11 @@ begin
       )
     puts JSON.pretty_generate(response)
   when "review-request"
-    puts JSON.pretty_generate(VibeForumLocal::Review.request(publication_payload(options)))
+    puts JSON.pretty_generate(
+           VibeForumLocal::Review.request(
+             publication_payload(options, allow_retired_reply: true),
+           ),
+         )
   when "publish"
     payload = publication_payload(options)
     report_json = options[:review_json] || (File.read(options[:review]) if options[:review])

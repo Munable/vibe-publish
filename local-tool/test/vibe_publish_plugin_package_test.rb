@@ -24,7 +24,7 @@ class VibePublishPluginPackageTest < Minitest::Test
       File.read(File.join(PLUGIN_ROOT, ".codex-plugin", "plugin.json")),
     )
     assert_operator manifest.dig("interface", "defaultPrompt").length, :<=, 128
-    assert_equal "0.6.0", manifest.fetch("version")
+    assert_equal "0.6.1", manifest.fetch("version")
     assert_equal "Apache-2.0", manifest.fetch("license")
     assert_equal "https://github.com/Munable/vibe-publish", manifest.fetch("repository")
     assert_equal "https://committown.com", manifest.fetch("homepage")
@@ -52,7 +52,7 @@ class VibePublishPluginPackageTest < Minitest::Test
 
       stdout, stderr, status = Open3.capture3(environment, CLI, "--version", chdir: elsewhere)
       assert status.success?, stderr
-      assert_equal "vibe-forum 0.6.0\n", stdout
+      assert_equal "vibe-forum 0.6.1\n", stdout
 
       stdout, stderr, status = Open3.capture3(environment, CLI, "--help", chdir: elsewhere)
       assert status.success?, stderr
@@ -61,7 +61,7 @@ class VibePublishPluginPackageTest < Minitest::Test
       assert_includes stdout, "--online"
       assert_includes stdout, "--allow-loopback-http"
       assert_includes stdout, "keychain is unsupported in Vibe Publish 0.6"
-      assert_includes stdout, "reply and reply-edit manifests remain accepted in 0.6.0 only"
+      assert_includes stdout, "reply and reply-edit publishing retired after 0.6.0"
       assert_includes stdout, "native forum Reply/Edit controls"
 
       stdout, stderr, status =
@@ -154,7 +154,8 @@ class VibePublishPluginPackageTest < Minitest::Test
       assert status.success?, stderr
       review_request = JSON.parse(stdout)
       assert_equal "vibe-local-review/v1", review_request.fetch("schema")
-      assert_includes review_request.fetch("compatibility_notice"), "accepted through 0.6.0"
+      assert_includes review_request.fetch("compatibility_notice"), "last release that could publish"
+      assert_includes review_request.fetch("compatibility_notice"), "readable only as local audit evidence"
       assert_includes review_request.fetch("compatibility_notice"), "native forum controls"
 
       refute Dir.exist?(File.join(home, ".codex"))

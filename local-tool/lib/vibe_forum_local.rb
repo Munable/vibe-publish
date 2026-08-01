@@ -106,6 +106,7 @@ module VibeForumLocal
       third_party_ai_processing_accepted
     ].freeze
     OPERATIONS = %w[create_topic reply edit_post].freeze
+    WRITABLE_OPERATIONS = %w[create_topic edit_post].freeze
     LOCALES = %w[en zh-CN].freeze
     UPLOAD_REFERENCE_PATTERN = %r{upload://[^\s<>"'\)\]]+}
     MARKDOWN_IMAGE_PATTERN = /!\[[^\]\n]*\]\(\s*<?([^>\s\)]+)>?(?:\s+["'][^"'\n]*["'])?\s*\)/
@@ -116,7 +117,7 @@ module VibeForumLocal
 
     module_function
 
-    def validate!(payload)
+    def validate!(payload, allow_retired_reply: false)
       raise Error, "Publication manifest must be a JSON object" if !payload.is_a?(Hash)
       raise Error, "Publication manifest must use #{SCHEMA}" if payload["schema"] != SCHEMA
       unless OPERATIONS.include?(payload["operation"])
@@ -130,6 +131,13 @@ module VibeForumLocal
       end
 
       title_mode = title_mode(variants, operation: payload["operation"])
+      if !allow_retired_reply &&
+           (payload["operation"] == "reply" ||
+             (payload["operation"] == "edit_post" && title_mode == :forbidden))
+        raise Error,
+              "Reply publishing and reply edits retired after #{LEGACY_REPLY_COMPATIBLE_THROUGH}; " \
+                "use CommitTown's native Reply and Edit controls"
+      end
       variants.each_value do |variant|
         if !variant.is_a?(Hash) || variant["body_markdown"].to_s.strip.empty?
           raise Error, "Every language variant needs body_markdown"
@@ -767,8 +775,8 @@ module VibeForumLocal
         raise Error, "Forum site-info returned an unexpected publishing compatibility set"
       end
       unless response["publish_operations"].is_a?(Array) &&
-               response["publish_operations"].sort == Envelope::OPERATIONS.sort
-        raise Error, "Forum site-info does not support every required publishing operation"
+               response["publish_operations"].sort == Envelope::WRITABLE_OPERATIONS.sort
+        raise Error, "Forum site-info returned unexpected writable publishing operations"
       end
       if response["edit_info_schema"] != EditInfo::SCHEMA
         raise Error, "Forum site-info returned an unsupported edit-info schema"
@@ -1463,8 +1471,9 @@ module VibeForumLocal
       }
       if legacy_reply_payload?(payload)
         result["compatibility_notice"] =
-          "Legacy reply envelopes remain accepted through #{LEGACY_REPLY_COMPATIBLE_THROUGH}; " \
-          "the 0.6 Skill directs new replies and reply edits to CommitTown's native forum controls."
+          "Version #{LEGACY_REPLY_COMPATIBLE_THROUGH} was the last release that could publish " \
+          "legacy reply envelopes. This request is readable only as local audit evidence; " \
+          "version #{VERSION} will not publish it. Use CommitTown's native forum controls."
       end
       result
     end
@@ -1665,13 +1674,13 @@ module VibeForumLocal
       end
       if payload["feature_request"]
         request = payload.fetch("feature_request")
-        @output.puts "Featured shelf request: yes (#{request.fetch("candidate_kind")})"
-        @output.puts "Server AI: one requested curation decision; ordinary publication continues if it fails"
+        @output.puts "Temporary Latest marker request: yes (#{request.fetch("candidate_kind")})"
+        @output.puts "Server AI: one requested marker decision; the topic stays in its original Latest position whether it succeeds or fails"
         @output.puts "Public transparency: scoped request ID, minute timestamp, result, policy/model, token cost, and duration"
         @output.puts "Not public: account, title, body, link, image, or evidence excerpt"
         @output.puts "Third-party AI input: sanitized original-language title and body only"
       else
-        @output.puts "Featured shelf request: no; this publication triggers no server AI"
+        @output.puts "Temporary Latest marker request: no; this publication triggers no server AI"
       end
       payload.fetch("variants").sort.each do |locale, variant|
         @output.puts "\n[#{locale}]"

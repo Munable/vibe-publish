@@ -40,7 +40,9 @@ Both topic variants require a non-empty title and body.
 
 `category_slug` remains a wire field for protocol compatibility. It is not a user choice or visible information-architecture label. For a live write, populate it only from the single internal publication destination returned by the current `site-info`; never ask the user for it or show it in the final preview. If `site-info` returns zero or more than one destination, or the manifest does not match the sole returned destination, fail closed and rebuild only after the forum configuration is corrected. A draft made without live `site-info` is not publish-ready and must be rebound, reviewed, and confirmed before writing.
 
-### Optional featured-shelf request
+### Optional temporary marker in Latest
+
+This request can only add a temporary marker to the topic in its existing position in Latest. It never creates a second stream, moves the topic, pins it, or changes Latest ordering.
 
 An ordinary topic omits `feature_request` and creates no server-AI call. Only a new topic that passed the local policy review may include the following exact object:
 
@@ -50,7 +52,7 @@ An ordinary topic omits `feature_request` and creates no server-AI call. Only a 
     "schema": "vibe-feature-request/v1",
     "requested": true,
     "candidate_kind": "build_log",
-    "local_skill_version": "vibe-publish/0.6.0",
+    "local_skill_version": "vibe-publish/0.6.1",
     "precheck_result": "passed",
     "public_disclosure_accepted": true,
     "third_party_ai_processing_accepted": true
@@ -97,11 +99,11 @@ Use the real `id` and `short_url` returned by that command. Add exactly this obj
 
 This fragment illustrates only the image fields; the complete manifest still needs schema, operation, source locale, target, and topic titles when applicable. A manifest without `image` must render no image. With `image`, each language body must render exactly one copy of that same server-returned value and no remote, HTML, reference-style, duplicate, or additional image. Image syntax inside a code block remains ordinary code. The server verifies the upload ID, exact short URL, owner, media type, size, both language reference lists, and the rendered image structure. `image-upload` copies the explicit file into a private `0600` snapshot, binds it to the SHA-256 the user confirmed from `image-info`, and uploads only that snapshot.
 
-## Legacy reply compatibility (0.6 only)
+## Retired reply envelope (read-only evidence)
 
-The current Skill never creates or submits this manifest. For a new reply or reply edit, direct the user to CommitTown's native **Reply / 回复** or edit action. The 0.6 CLI and server API continue accepting the existing `reply` envelope for one rolling-compatibility release so an already-reviewed 0.5 manifest does not break during upgrade. Do not present that compatibility route as the new workflow.
+The current Skill never creates or submits this manifest. For a new reply or reply edit, direct the user to CommitTown's native **Reply / 回复** or edit action. Version 0.6.0 completed the single rolling-compatibility release. In 0.6.1, `review-request` can still read the old envelope for audit evidence, but `publish` and the server endpoint reject it and point the user to the native forum controls.
 
-Legacy reply variants omit titles. `reply_to_post_number` remains optional when the old caller explicitly targets a particular reply:
+The following shape is documented only to identify historical evidence. Legacy reply variants omitted titles, and `reply_to_post_number` was optional:
 
 ```json
 {
@@ -177,7 +179,7 @@ Allowed decisions are `allow`, `warn`, and `block`. The CLI refuses `block` and 
 
 After authorization, run `doctor --online` and `site-info`. Verify the returned username is the account the user intends to publish as. For a new topic, require exactly one internal publication destination and bind its returned slug to the wire manifest. Never ask the user to select it, expose its name/slug in the preview, or copy an ID from a local demo, document, another account, or another forum. Zero or multiple destinations stop the workflow without writing.
 
-The same live `site-info` response includes `content_limits` for first-post bodies and topic titles, plus reply limits retained for the 0.6 legacy CLI/API surface. For the Skill's supported topic operations, check both `en` and `zh-CN` against the first-post and title values before requesting publication confirmation. The CLI fetches and enforces the limits again immediately before preview and write; when one version is too short or too long, update that version and regenerate the content-bound local review before retrying.
+The same live `site-info` response includes `content_limits` for bodies and topic titles. For the Skill's supported topic operations, check both `en` and `zh-CN` against the first-post and title values before requesting publication confirmation. Reply-related limits may remain in this general Discourse metadata, but they do not advertise a writable reply operation. The CLI fetches and enforces the first-post and title limits again immediately before preview and write; when one version is too short or too long, update that version and regenerate the content-bound local review before retrying.
 
 ## Submission sequence
 

@@ -1,8 +1,8 @@
 # Contributing to Vibe Publish
 
-Vibe Publish 0.6.0 is distributed under Apache-2.0. The public marketplace repository contains the auditable source snapshot (`.agents/skills/vibe-publish`, `local-tool`, release scripts, and tests) plus the generated install carrier at `plugins/vibe-publish`. In the CommitTown product repository, the equivalent carrier is `codex-plugins/vibe-publish`.
+Vibe Publish 0.6.1 is distributed under Apache-2.0. The public marketplace repository contains the auditable source snapshot (`.agents/skills/vibe-publish`, `local-tool`, release scripts, and tests) plus the generated install carrier at `plugins/vibe-publish`. In the CommitTown product repository, the equivalent carrier is `codex-plugins/vibe-publish`.
 
-The Skill's supported product path creates bilingual topics and edits only their first posts. Direct replies and reply edits to CommitTown's native forum controls. The 0.6 CLI/API still accepts the existing `reply` envelope for one compatibility release; changes must not accidentally remove that rolling-upgrade surface.
+The Skill creates bilingual topics and edits only their first posts. Replies and reply edits use CommitTown's native forum controls. Version 0.6.0 completed the one-release compatibility window; 0.6.1 keeps the old envelope readable for local review evidence but refuses to publish it.
 
 ## Developer Certificate of Origin
 
@@ -38,7 +38,7 @@ scripts/build-vibe-publish-marketplace \
 
 The output includes root and packaged Apache-2.0 licenses, canonical source/tests, the generated Plugin, install instructions, and `vibe-publish-release.json`. The manifest hashes the source snapshot, package, marketplace, onboarding, contributing guide, and license.
 
-The builder validates only local bytes and URL syntax. It does not fetch the declared repository and cannot prove that its `v0.6.0` tag, GitHub Release, branch protections, external installation, forum reachability, or production write exists. Those values remain explicitly `false` in the release manifest until separate post-publication acceptance closes them.
+The builder validates only local bytes and URL syntax. It does not fetch the declared repository and cannot prove that its `v0.6.1` tag, GitHub Release, branch protections, external installation, forum reachability, or production write exists. Those values remain explicitly `false` in the release manifest until separate post-publication acceptance closes them.
 
 ## Run the release checks
 

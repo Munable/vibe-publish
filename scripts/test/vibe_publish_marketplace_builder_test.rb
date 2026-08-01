@@ -41,7 +41,7 @@ class VibePublishMarketplaceBuilderTest < Minitest::Test
       assert_equal SOURCE_URL, release.fetch("source_url")
       assert_equal FORUM_URL, release.fetch("forum_url")
       assert_equal SOURCE_URL, release.dig("source", "url")
-      assert_equal "v0.6.0", release.dig("source", "declared_ref")
+      assert_equal "v0.6.1", release.dig("source", "declared_ref")
       assert_equal false, release.dig("source", "remote_repository_fetched")
       assert_equal false, release.dig("source", "remote_ref_verified")
       assert_equal "Apache-2.0", release.dig("license", "spdx_id")

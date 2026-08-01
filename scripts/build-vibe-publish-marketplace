@@ -255,12 +255,12 @@ File.write(
 
     **2. 回复主题 / Reply to a topic**
 
-    请打开真实主题页面并使用论坛原生 **Reply / 回复**。0.6 CLI/API 仍接受旧版 `reply` manifest，
-    仅用于一版滚动兼容；新 Skill 不起草、不预览也不提交回复。
+    请打开真实主题页面并使用论坛原生 **Reply / 回复**。旧版 `reply` manifest 只可由
+    0.6.1 在本地读取，作为 0.6.0 的审计记录；CLI 和服务端都不会再用它发布或编辑回复。
 
-    Open the real topic page and use the forum's native **Reply** action. The 0.6 CLI/API still
-    accepts legacy `reply` manifests for one compatibility release; the new Skill does not draft,
-    preview, or submit replies.
+    Open the real topic page and use the forum's native **Reply** action. Version 0.6.1 can read a
+    legacy `reply` manifest locally as 0.6.0 audit evidence, but neither the CLI nor the server will
+    use it to publish or edit a reply.
 
     **3. 编辑自己的主题首帖 / Edit my own topic's first post**
 

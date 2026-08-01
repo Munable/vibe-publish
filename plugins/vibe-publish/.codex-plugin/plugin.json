@@ -1,6 +1,6 @@
 {
   "name": "vibe-publish",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Open-source carrier for user-confirmed bilingual CommitTown topics and conflict-safe first-post edits.",
   "author": {
     "name": "CommitTown",

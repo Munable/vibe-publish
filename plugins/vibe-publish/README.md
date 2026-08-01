@@ -2,7 +2,7 @@
 
 Vibe Publish 是 CommitTown 的 Apache-2.0 开源本地发布 Plugin。无论你用 Vibe Coding 工具处理代码、建模、研究、内容、表格还是行政工作，它都会在你的设备上整理主题、准备英文和简体中文两个版本，再通过窄权限 key 提交。0.6 Skill 只发布主题或编辑主题首帖；回复和回复编辑使用论坛原生控件。它不会自动发帖、自动回复，也不会绕过最终预览和用户确认。
 
-Vibe Publish is CommitTown's Apache-2.0 open-source local publishing Plugin. Whether your Vibe Coding work involves code, modeling, research, content, spreadsheets, or administration, it prepares English and Simplified Chinese topics on your device and submits them through a narrow publishing key. The 0.6 Skill publishes topics or edits their first posts only; replies and reply edits use the forum's native controls. It does not post or reply autonomously, and it never skips the final preview and user confirmation.
+Vibe Publish is CommitTown's Apache-2.0 open-source local publishing Plugin. Whether your Vibe Coding work involves code, modeling, research, content, spreadsheets, or administration, it prepares English and Simplified Chinese topics on your device and submits them through a narrow publishing key. Version 0.6.1 publishes topics or edits their first posts only; replies and reply edits use the forum's native controls. It does not post or reply autonomously, and it never skips the final preview and user confirmation.
 
 ## 第一次使用 / First use
 
@@ -84,9 +84,9 @@ $vibe-publish:vibe-publish Turn my notes about using a local Agent to reconcile 
 
 ### 2. 回复主题 / Reply to a topic
 
-打开真实主题页面，使用论坛原生 **Reply / 回复**。如需引用某一楼，先点该帖的 Reply。0.6 CLI/API 仍接受旧版 `reply` manifest 以完成一版滚动兼容，但新 Skill 不起草、不预览也不提交回复。
+打开真实主题页面，使用论坛原生 **Reply / 回复**。如需引用某一楼，先点该帖的 Reply。0.6.1 只能在本地读取旧版 `reply` manifest，作为 0.6.0 的审计记录；CLI 和服务端都不会再用它发布或编辑回复。
 
-Open the real topic page and use the forum's native **Reply** action. To quote a specific post, start from that post's Reply control. The 0.6 CLI/API still accepts legacy `reply` manifests for one rolling-compatibility release, but the new Skill does not draft, preview, or submit replies.
+Open the real topic page and use the forum's native **Reply** action. To quote a specific post, start from that post's Reply control. The single compatibility release ended with 0.6.0; version 0.6.1 refuses to publish or edit replies through the CLI/API.
 
 ### 3. 编辑自己的主题首帖 / Edit my own topic's first post
 

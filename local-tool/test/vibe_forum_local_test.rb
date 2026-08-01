@@ -284,7 +284,7 @@ class VibeForumLocalTest < Minitest::Test
       "plugin" => "vibe-governance",
       "publish_schema" => "vibe-publish/v3",
       "accepted_publish_schemas" => %w[vibe-publish/v2 vibe-publish/v3],
-      "publish_operations" => %w[create_topic reply edit_post],
+      "publish_operations" => %w[create_topic edit_post],
       "edit_info_schema" => "vibe-edit-info/v1",
       "scope" => VibeForumLocal::SCOPE,
       "locales" => %w[en zh-CN],
@@ -380,7 +380,7 @@ class VibeForumLocalTest < Minitest::Test
       "schema" => "vibe-feature-request/v1",
       "requested" => true,
       "candidate_kind" => "build_log",
-      "local_skill_version" => "vibe-publish/0.6.0",
+      "local_skill_version" => "vibe-publish/0.6.1",
       "precheck_result" => "passed",
       "public_disclosure_accepted" => true,
       "third_party_ai_processing_accepted" => true,
@@ -418,7 +418,7 @@ class VibeForumLocalTest < Minitest::Test
     refute request.key?("compatibility_notice")
   end
 
-  def test_review_request_keeps_legacy_reply_compatibility_visible_for_0_6
+  def test_review_request_marks_a_legacy_reply_as_read_only_audit_evidence
     payload = {
       "schema" => "vibe-publish/v3",
       "operation" => "reply",
@@ -433,7 +433,9 @@ class VibeForumLocalTest < Minitest::Test
     request = VibeForumLocal::Review.request(payload)
 
     assert_equal "0.6.0", VibeForumLocal::LEGACY_REPLY_COMPATIBLE_THROUGH
-    assert_includes request.fetch("compatibility_notice"), "Legacy reply envelopes"
+    assert_includes request.fetch("compatibility_notice"), "last release that could publish"
+    assert_includes request.fetch("compatibility_notice"), "readable only as local audit evidence"
+    assert_includes request.fetch("compatibility_notice"), "version 0.6.1 will not publish it"
     assert_includes request.fetch("compatibility_notice"), "native forum controls"
   end
 
@@ -755,7 +757,7 @@ class VibeForumLocalTest < Minitest::Test
     assert_equal 42, response.dig("post", "id")
     assert_includes output.string, topic_payload.dig("variants", "en", "body_markdown")
     assert_includes output.string, topic_payload.dig("variants", "zh-CN", "body_markdown")
-    assert_includes output.string, "Featured shelf request: no"
+    assert_includes output.string, "Temporary Latest marker request: no"
     assert_includes output.string, "triggers no server AI"
     assert_equal "/vibe-governance/site-info.json", client.calls.fetch(0).fetch(:path)
     assert_equal "/vibe-governance/site-info.json", client.calls.fetch(1).fetch(:path)
@@ -778,8 +780,9 @@ class VibeForumLocalTest < Minitest::Test
       client: client,
     ).publish(payload: payload, review_report: review_for(payload))
 
-    assert_includes output.string, "Featured shelf request: yes (build_log)"
-    assert_includes output.string, "one requested curation decision"
+    assert_includes output.string, "Temporary Latest marker request: yes (build_log)"
+    assert_includes output.string, "one requested marker decision"
+    assert_includes output.string, "stays in its original Latest position"
     assert_includes output.string, "Public transparency: scoped request ID, minute timestamp, result"
     refute_includes output.string.downcase, "category"
     refute_includes output.string, "uncategorized"
@@ -801,7 +804,7 @@ class VibeForumLocalTest < Minitest::Test
     end
   end
 
-  def test_publish_rejects_a_short_bilingual_reply_using_live_forum_limits_before_write
+  def test_publish_retires_reply_before_live_validation_or_write
     payload = {
       "schema" => "vibe-publish/v3",
       "operation" => "reply",
@@ -825,11 +828,9 @@ class VibeForumLocalTest < Minitest::Test
       ).publish(payload: payload, review_report: review_for(payload))
     end
 
-    assert_match(/zh-CN body_markdown is 14 characters/, error.message)
-    assert_match(/requires 20\.\.32000/, error.message)
-    assert_match(/regenerate its local review/, error.message)
-    assert_match(/no publication was sent/, error.message)
-    assert_equal ["/vibe-governance/site-info.json"], client.calls.map { |call| call.fetch(:path) }
+    assert_match(/Reply publishing and reply edits retired after 0\.6\.0/, error.message)
+    assert_match(/native Reply and Edit controls/, error.message)
+    assert_empty client.calls
   end
 
   def test_edit_manifest_requires_version_and_consistent_topic_titles
@@ -1234,12 +1235,12 @@ class VibeForumLocalTest < Minitest::Test
       "feature_request" => payload.fetch("feature_request"),
     }
     error = assert_raises(VibeForumLocal::Error) do
-      VibeForumLocal::Envelope.validate!(reply)
+      VibeForumLocal::Envelope.validate!(reply, allow_retired_reply: true)
     end
     assert_match(/only for a new topic/, error.message)
   end
 
-  def test_reply_manifest_omits_titles_and_validates_reply_target
+  def test_retired_reply_manifest_is_readable_only_for_review_evidence
     payload = {
       "schema" => "vibe-publish/v3",
       "operation" => "reply",
@@ -1251,19 +1252,24 @@ class VibeForumLocalTest < Minitest::Test
       },
     }
 
-    assert_equal payload, VibeForumLocal::Envelope.validate!(payload)
+    error = assert_raises(VibeForumLocal::Error) do
+      VibeForumLocal::Envelope.validate!(payload)
+    end
+    assert_match(/retired after 0\.6\.0/, error.message)
+    assert_equal payload,
+                 VibeForumLocal::Envelope.validate!(payload, allow_retired_reply: true)
 
     with_title = Marshal.load(Marshal.dump(payload))
     with_title["variants"]["en"]["title"] = "Not allowed"
     error = assert_raises(VibeForumLocal::Error) do
-      VibeForumLocal::Envelope.validate!(with_title)
+      VibeForumLocal::Envelope.validate!(with_title, allow_retired_reply: true)
     end
     assert_match(/must omit title/, error.message)
 
     bad_target = Marshal.load(Marshal.dump(payload))
     bad_target["target"]["reply_to_post_number"] = 0
     error = assert_raises(VibeForumLocal::Error) do
-      VibeForumLocal::Envelope.validate!(bad_target)
+      VibeForumLocal::Envelope.validate!(bad_target, allow_retired_reply: true)
     end
     assert_match(/must be positive/, error.message)
   end
@@ -1358,6 +1364,19 @@ class VibeForumLocalTest < Minitest::Test
       end
       assert_equal ["/vibe-governance/site-info.json"], client.calls.map { |call| call.fetch(:path) }
     end
+  end
+
+  def test_site_info_rejects_retired_reply_as_a_writable_operation
+    response = site_info_response.merge("publish_operations" => %w[create_topic reply edit_post])
+
+    error = assert_raises(VibeForumLocal::Error) do
+      VibeForumLocal::SiteInfo.new(
+        credentials: credentials(user_api_key: "narrow-key"),
+        client: FakeClient.new(response),
+      ).fetch
+    end
+
+    assert_match(/unexpected writable publishing operations/, error.message)
   end
 
   def test_publish_rechecks_server_scope_after_confirmation_and_before_write
