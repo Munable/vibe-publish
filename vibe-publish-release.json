@@ -15,7 +15,7 @@
   },
   "onboarding": {
     "path": "README.md",
-    "sha256": "1c8d090f0914fd13390c9d17887b31872043fd5ead35c84a6b545226c1f5ac00"
+    "sha256": "7cd1106ddf74ae3818c124a90e66a19ca9d0c9767db485f73bcf1113a5fbe337"
   },
   "contributing": {
     "path": "CONTRIBUTING.md",
@@ -119,7 +119,7 @@
     ]
   },
   "source_snapshot": {
-    "tree_sha256": "d7989622d1bd896994570ca19a738884fffc06aa87c9917ba4b6da9ba261f39f",
+    "tree_sha256": "14955ebc996927a7e91896621d1347c696be1f1249e925b1d6364a8398b12e01",
     "files": [
       {
         "path": ".agents/skills/vibe-publish/SKILL.md",
@@ -219,9 +219,9 @@
       },
       {
         "path": "scripts/build-vibe-publish-marketplace",
-        "bytes": 17249,
+        "bytes": 19070,
         "mode": "755",
-        "sha256": "955824ff60c5c899cdb60c8af9bc863da6bfe49a54899e2d26cf08c470e5dc5a"
+        "sha256": "6dfc36b5db0e437dbf6deac4f39497b4a60a37220f19366bf70cd3c39f4c67b4"
       },
       {
         "path": "scripts/build-vibe-publish-plugin",
@@ -231,9 +231,9 @@
       },
       {
         "path": "scripts/test/vibe_publish_marketplace_builder_test.rb",
-        "bytes": 6199,
+        "bytes": 6940,
         "mode": "644",
-        "sha256": "8630ca68f5b2277b457ee7d14cfec7a7beeee453542818afaffa2090857f60fc"
+        "sha256": "cdd74248d9e6d06dcacf6c8847f633a842b945016a2ea4646b29414690dd84b8"
       }
     ]
   },

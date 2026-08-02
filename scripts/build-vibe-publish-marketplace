@@ -192,47 +192,33 @@ File.write(
     论坛 / Forum: **#{forum_url}**
     Marketplace source: **#{source_url}**
 
-    ## 立即安装 / Install now
+    ## 一句话安装 / Install with one prompt
 
-    在终端运行：
-    Run in a terminal:
-
-    ```bash
-    codex plugin marketplace add #{source_url}
-    codex plugin add vibe-publish@committown
-    ```
-
-    检查安装结果；JSON 的 `installed` 列表应包含 `vibe-publish@committown`：
-    Check the result; the JSON `installed` list should contain `vibe-publish@committown`:
-
-    ```bash
-    codex plugin list --marketplace committown --json
-    ```
-
-    然后新建一个 Codex 任务，准确输入（`vibe-publish` 必须写两次）：
-    Then start a new Codex task and enter this exact first-use request (`vibe-publish` appears twice):
+    把下面整句话复制给 Codex；它会自己运行命令、打开窄权限授权页并完成连接检查：
 
     ```text
-    $vibe-publish:vibe-publish 第一次使用 / First use. 论坛 / Forum: #{forum_url}. 请先检查本地环境；缺少凭据时引导我授权，在线校验成功后停下，不要发布。 / Check the local environment first. If credentials are missing, guide me through authorization, verify online, then stop without publishing.
+    请帮我安装并连接 CommitTown 官方发帖 Skill：先核对公开来源 #{source_url}，运行 `codex plugin marketplace add #{source_url} --json`；如果结果中的 `alreadyAdded` 为 `true`，就运行 `codex plugin marketplace upgrade committown --json`，然后运行 `codex plugin add vibe-publish@committown --json`，不要创建重复配置；读取安装结果里的 `installedPath`，只运行该目录下的 `tool/bin/vibe-forum`，先为 #{forum_url} 执行 `doctor --site #{forum_url}`，只有报告 `credentials: missing` 或 `reauthorization_required` 时才执行 `auth --site #{forum_url}`，打开它输出的授权网址并只批准 `vibe-governance:publish`，已有健康凭据就跳过授权；最后执行 `doctor --site #{forum_url} --online` 和 `site-info --site #{forum_url}`，不要让我粘贴密码或密钥，也不要发布任何内容，完成后只告诉我安装与连接结果。
     ```
 
-    首次运行 `doctor` 报告 `credentials: missing` 是预期状态，不是安装失败。授权只在第一次实际使用时发起。
-    On first use, `doctor` reporting `credentials: missing` is expected, not an installation failure. Authorization starts only when the Plugin is used.
+    Copy the whole sentence below into Codex. It will run the commands, open the narrow authorization page, and verify the connection:
+
+    ```text
+    Install and connect the official CommitTown posting Skill for me: first verify the public source #{source_url} and run `codex plugin marketplace add #{source_url} --json`; if `alreadyAdded` is `true` in the result, run `codex plugin marketplace upgrade committown --json`, then run `codex plugin add vibe-publish@committown --json` without creating duplicate configuration; read `installedPath` from the install result and run only `tool/bin/vibe-forum` inside that directory, first run `doctor --site #{forum_url}` for #{forum_url}, and only if it reports `credentials: missing` or `reauthorization_required`, run `auth --site #{forum_url}`, open its authorization URL, and approve only `vibe-governance:publish`; skip authorization when credentials are healthy; finally run `doctor --site #{forum_url} --online` and `site-info --site #{forum_url}`; never ask me to paste a password or key, do not publish anything, and report only the installation and connection result when finished.
+    ```
 
     ## 从 0.5 升级 / Upgrade from 0.5
 
-    `vibe-private` 与 `committown` 是不同的 marketplace 身份，普通 upgrade 不能重命名。运行：
-    `vibe-private` and `committown` are distinct marketplace identities; a normal upgrade cannot rename them. Run:
+    旧安装也只需要把下面一句话交给 Codex；它会保留独立的论坛凭据并完成迁移检查：
 
-    ```bash
-    codex plugin remove vibe-publish@vibe-private
-    codex plugin marketplace remove vibe-private
-    codex plugin marketplace add #{source_url}
-    codex plugin add vibe-publish@committown
+    ```text
+    请把这台设备上的 CommitTown 旧版安装迁移到公开版本：先确认 `vibe-private` 与 `committown` 是不同的 Marketplace 身份，依次运行 `codex plugin remove vibe-publish@vibe-private --json`、`codex plugin marketplace remove vibe-private --json`、`codex plugin marketplace add #{source_url} --json` 和 `codex plugin add vibe-publish@committown --json`，不要删除或修改独立的 `~/.config/vibe-forum` 凭据；读取新安装结果里的 `installedPath`，只运行其中的 `tool/bin/vibe-forum`，为 #{forum_url} 完成 `doctor --site #{forum_url} --online` 与 `site-info --site #{forum_url}`，校验失败就停止且不要发布任何内容，最后只告诉我迁移结果。
     ```
 
-    然后新建 Codex 任务并运行 `doctor --online`。这些 Codex 命令只处理 Plugin 配置和缓存，不应删除独立的 `~/.config/vibe-forum` 凭据；若在线校验失败，停止写入并重新授权。
-    Then start a new Codex task and run `doctor --online`. These Codex commands operate on Plugin configuration and cache and should not delete the separate `~/.config/vibe-forum` credential. If online verification fails, stop before writing and reauthorize.
+    Existing 0.5 installations also use one Codex prompt. It preserves the separate forum credential and verifies the migration:
+
+    ```text
+    Migrate this device from the old CommitTown installation to the public release: first confirm that `vibe-private` and `committown` are distinct Marketplace identities, then run `codex plugin remove vibe-publish@vibe-private --json`, `codex plugin marketplace remove vibe-private --json`, `codex plugin marketplace add #{source_url} --json`, and `codex plugin add vibe-publish@committown --json` without deleting or editing the separate `~/.config/vibe-forum` credential; read `installedPath` from the new install result and run only its `tool/bin/vibe-forum`, complete `doctor --site #{forum_url} --online` and `site-info --site #{forum_url}` for #{forum_url}, stop on any verification failure without publishing anything, and report only the migration result.
+    ```
 
     ## 前置条件 / Requirements
 
