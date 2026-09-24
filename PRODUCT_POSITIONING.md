@@ -1,4 +1,6 @@
-# Vibe Publish — product positioning / 产品定位
+# Vibe Publish — experiment notes / 试验项目笔记
+
+Internal test repository outside Marine Mystique's five company products; not a company website entry. / 本仓库为内部试验，不属于蓝色聚合官网展示的五个公司产品。
 
 Reviewed 2026-09-24 against public source `0f1c362`. This document explains the existing 0.6.1 publishing model. It does not change the released Plugin, its manifest or CommitTown's paused operating status.
 
@@ -25,7 +27,7 @@ The central value is carrying one person's experience across a language boundary
 | Bind review and confirmation to exact content / 检查与确认绑定到准确内容 | The author approves what will actually be sent / 作者确认真正要发出的内容 | Changed content needs a fresh review and confirmation / 内容改变后需重新检查和确认 |
 | Topic creation and first-post edits only / 聚焦主题及首帖编辑 | Longer contributions get deliberate preparation / 较完整的经验分享获得充分准备 | Replies stay in the forum's native conversation flow / 回复保留在论坛原生交流流程中 |
 
-This is the company's software-to-reality idea applied to communication: completed work can become experience another person can understand and use.
+This test applies the software-to-reality idea to communication: completed work can become experience another person can understand and use.
 
 它把“软件改变现实”的理念落实到交流：让已经发生的工作，变成其他人能够理解和使用的经验。
 
@@ -37,15 +39,15 @@ This is the company's software-to-reality idea applied to communication: complet
 - [Tool guide](local-tool/README.md): narrow `vibe-governance:publish` scope, author/version-bound edits and retry-safe publication.
 - [Root README](README.md): the public Apache-2.0 source and supported installation boundary. Its release snapshot is unchanged by this document.
 
-Public category: **Open-source bilingual publishing tool**. Keep the GitHub source link as the entry point. CommitTown is paused; do not imply that this positioning update reopens the community or verifies current forum operation.
+Repository category: **Open-source bilingual publishing tool; internal experiment in the company index**. CommitTown is paused; do not imply that this note reopens the community or verifies current forum operation.
 
-对外分类：**开源双语发布工具**，入口使用源码链接。CommitTown 仍暂停运营，本次定位整理不意味着社区重启，也不证明论坛当前可用。
+仓库分类：**开源双语发布工具；在公司索引中属于内部试验**。CommitTown 仍暂停运营，本次整理不意味着社区重启，也不证明论坛当前可用。
 
 Do not claim perfect translation, automatic fact verification, confidential/offline model processing, spam elimination, autonomous posting or all-platform publishing. The code can enforce envelope shape, exact-content review binding and confirmation; the quality of editing and translation depends on the selected AI and human review.
 
 不宣称完美翻译、自动核实事实、模型处理完全离线保密、消除垃圾内容、无人值守发帖或全平台发布。程序能约束内容结构、检查与正文的绑定和发送确认；编辑、翻译的质量仍取决于所选 AI 和作者审阅。
 
-## Website copy / 官网短文案
+## Experiment summary / 试验摘要
 
 **Your experience. Two languages. Your call to publish.** An open-source tool that prepares English–Chinese topics for CommitTown with your AI, then puts the complete text in your hands before it is shared.
 
